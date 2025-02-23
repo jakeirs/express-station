@@ -10,10 +10,10 @@ export default function Home() {
       <Stack.Screen options={{ title: 'Home' }} />
       <Container>
         <View>
-          <Text className="text-4xl font-bold">Zustand with Persistence</Text>
+          <Text className="text-4xl font-bold">- Zustand with Persistence</Text>
         </View>
         <View>
-          <Text className="text-4xl font-bold"></Text>
+          <Text className="text-xl font-bold">- NativeWind</Text>
         </View>
       </Container>
     </>
