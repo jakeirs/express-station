@@ -1,6 +1,5 @@
 import { Text, View } from 'react-native';
-import Swiper from '~/components/DataCarousel-1';
-import InfiniteSwiper from '~/components/InfinitiveSwiper-4';
+import InfiniteSwiper from '~/components/4-InfinitiveSwiper';
 
 export default function HandlerGesture() {
   return (
