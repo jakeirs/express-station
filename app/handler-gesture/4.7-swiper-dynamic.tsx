@@ -1,83 +1,118 @@
-import { View, Text } from 'react-native';
-import type { SwipeDirection } from '~/components/4.6-SwiperDynamic2';
-import Swiper from '~/components/4.6-SwiperDynamic2';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ActivityIndicator } from 'react-native';
 
-export default function SwiperExample() {
-  // Define your item structure
-  interface SwiperItem {
-    id: string;
-    title: string;
-    description: string;
-    date: string;
-    badge: string;
-    color: string;
-  }
+import Swiper from '~/components/4.7-SwiperDynamicAdd';
 
-  // Generate 12 initial items with different colors and data
-  const colors = [
-    'bg-pink-500',
-    'bg-purple-500',
-    'bg-blue-500',
-    'bg-green-500',
-    'bg-yellow-500',
-    'bg-red-500',
-    'bg-indigo-500',
-    'bg-orange-500',
-    'bg-teal-500',
-    'bg-cyan-500',
-    'bg-lime-500',
-    'bg-amber-500',
-  ];
+export type SwipeDirection = 'next' | 'previous';
 
-  const badges = ['New', 'Popular', 'Featured', 'Limited', 'Sale', 'Premium'];
+// Generic type for item data
+export interface ItemData {
+  id: string | number;
+  [key: string]: any; // Allow for any additional properties
+}
 
-  // Generate our 12 items
-  const initialItems: SwiperItem[] = Array.from({ length: 12 }, (_, i) => ({
-    id: `item-${i + 1}`,
-    title: `Item ${i + 1}`,
-    description: `This is a detailed description for item number ${i + 1}. It contains information about this specific item.`,
-    date: new Date(2023, 0, i + 1).toISOString().split('T')[0], // YYYY-MM-DD format
-    badge: badges[i % badges.length],
-    color: colors[i % colors.length],
+// Example item interface - you can replace this with your actual data structure
+interface ExampleItem extends ItemData {
+  title: string;
+  description: string;
+  color: string;
+  date: string;
+}
+
+// Type for render item function
+export type RenderItemFunction<T extends ItemData> = (info: {
+  item: T;
+  index: number;
+}) => React.ReactNode;
+
+// Generate example data for demonstration
+const generateItems = (startId: number, count: number): ExampleItem[] => {
+  const colors = ['#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3', '#33FFF3'];
+  return Array.from({ length: count }, (_, i) => ({
+    id: `item_${startId + i}`,
+    title: `Item ${startId + i}`,
+    description: `This is the description for item ${startId + i}`,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0],
   }));
+};
 
-  // Define how each item should be rendered
-  const renderItem = ({ item, index }: { item: SwiperItem; index: number }) => (
-    <View className={`flex-1 ${item.color} p-6`}>
-      <Text className="text-2xl font-bold text-white">{item.title}</Text>
-      <Text className="mt-2 text-white/80">{item.description}</Text>
+// Main component implementation
+const SwiperImplementation = () => {
+  // Initial set of items
+  const [items, setItems] = useState<ExampleItem[]>(generateItems(1, 12));
+  const [isLoading, setIsLoading] = useState(false);
 
-      <View className="mt-auto">
-        <View className="mb-4 flex-row items-center justify-between">
-          <View className="rounded-full bg-black/20 px-3 py-1">
-            <Text className="text-xs text-white">Date: {item.date}</Text>
-          </View>
+  // Handle when we're approaching the end of items
+  const handleNearEnd = useCallback(() => {
+    if (!isLoading) {
+      console.log('Near end, fetching more items...');
+      setIsLoading(true);
 
-          <View className="rounded-full bg-white/20 px-3 py-1">
-            <Text className="text-xs text-white">{item.badge}</Text>
-          </View>
-        </View>
-
-        <View className="rounded-lg bg-black/20 p-2">
-          <Text className="text-center text-xs text-white">Item Index: {index}</Text>
-        </View>
-      </View>
-    </View>
-  );
+      // Simulate fetching more data with a delay
+      setTimeout(() => {
+        const nextId = items.length + 1;
+        const newItems = generateItems(nextId, 8);
+        setItems((prevItems) => [...prevItems, ...newItems]);
+        setIsLoading(false);
+        console.log(`Added ${newItems.length} new items`);
+      }, 1500); // 1.5 second delay to simulate network request
+    }
+  }, [items, isLoading]);
 
   // Handle swipe events
-  const handleSwipeEnd = ({ direction }: { direction: SwipeDirection }) => {
+  const handleSwipeEnd = useCallback(({ direction }: { direction: SwipeDirection }) => {
     console.log(`Swiped ${direction}`);
-    // Additional logic can go here, like loading more items, etc.
-  };
+  }, []);
+
+  // Custom render function for each item
+  const renderItem = useCallback(
+    ({ item, index }: { item: ExampleItem; index: number }) => (
+      <View className="flex-1 p-6" style={{ backgroundColor: item.color }}>
+        <View className="flex-1 justify-between">
+          <View>
+            <Text className="text-2xl font-bold text-white">{item.title}</Text>
+            <Text className="mt-2 text-white/80">{item.description}</Text>
+            <Text className="mt-2 text-white/60">Index in list: {index}</Text>
+          </View>
+
+          <View className="flex-row items-center justify-between">
+            <View className="rounded-full bg-black/20 px-3 py-1">
+              <Text className="text-xs text-white">Date: {item.date}</Text>
+            </View>
+
+            <View className="rounded-full bg-white/20 px-3 py-1">
+              <Text className="text-xs text-white">ID: {item.id}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    ),
+    []
+  );
 
   return (
-    <Swiper
-      initialItems={initialItems}
-      renderItem={renderItem}
-      initialIndex={4}
-      onSwipeEnd={handleSwipeEnd}
-      showDebugPanel={true} // Set to false to hide the debug panel in production
-    />
+    <View className="flex-1">
+      <Swiper
+        initialItems={items}
+        renderItem={renderItem}
+        initialIndex={1} // Start from the second item
+        onSwipeEnd={handleSwipeEnd}
+        onNearEnd={handleNearEnd}
+        nearEndThreshold={4} // Trigger fetch when 4 items from the end
+        showDebugPanel={true}
+      />
+
+      {/* Loading indicator when fetching more items */}
+      {isLoading && (
+        <View className="absolute bottom-36 right-4 rounded-full bg-black/50 p-2">
+          <ActivityIndicator size="small" color="#ffffff" />
+        </View>
+      )}
+    </View>
   );
-}
+};
+
+export default SwiperImplementation;

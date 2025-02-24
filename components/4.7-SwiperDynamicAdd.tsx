@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { View, Dimensions, ScrollView, Text } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -12,6 +12,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 const VISIBLE_ITEMS_THRESHOLD = 2;
+const FETCH_TRIGGER_THRESHOLD = 6; // How many items from the end to trigger fetch
 
 export type SwipeDirection = 'next' | 'previous';
 
@@ -33,6 +34,8 @@ interface SwiperProps<T extends ItemData> {
   renderItem: RenderItemFunction<T>;
   initialIndex?: number;
   onSwipeEnd?: (info: { direction: SwipeDirection }) => void;
+  onNearEnd?: () => void; // Callback when approaching end of items
+  nearEndThreshold?: number; // Override the default threshold
   showDebugPanel?: boolean;
 }
 
@@ -46,10 +49,11 @@ interface VisibleItem<T extends ItemData> {
 interface DebugLogProps<T extends ItemData> {
   log: VisibleItem<T>[];
   currentIndex: number;
+  totalItems: number;
 }
 
 // Debug component to visualize what's happening
-function DebugLog<T extends ItemData>({ log, currentIndex }: DebugLogProps<T>) {
+function DebugLog<T extends ItemData>({ log, currentIndex, totalItems }: DebugLogProps<T>) {
   const visibleItemsIds = log.map((item) => item.index);
 
   return (
@@ -67,6 +71,10 @@ function DebugLog<T extends ItemData>({ log, currentIndex }: DebugLogProps<T>) {
 
       <Text className="text-xs text-red-400">Current Index: {currentIndex}</Text>
       <Text className="text-xs text-orange-400">Visible Items Count: {log.length}</Text>
+      <Text className="text-xs text-blue-400">Total Items: {totalItems}</Text>
+      <Text className="text-xs text-yellow-400">
+        Distance to End: {totalItems - currentIndex - 1}
+      </Text>
     </ScrollView>
   );
 }
@@ -77,9 +85,20 @@ function Swiper<T extends ItemData>({
   renderItem,
   initialIndex = 0,
   onSwipeEnd,
+  onNearEnd,
+  nearEndThreshold,
   showDebugPanel = false,
 }: SwiperProps<T>) {
-  const itemCount = initialItems.length;
+  // Use state for items to properly handle updates
+  const [items, setItems] = useState<T[]>(initialItems);
+  
+  // Update items when initialItems changes
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
+
+  const itemCount = items.length;
+  const threshold = nearEndThreshold || FETCH_TRIGGER_THRESHOLD;
 
   // State management - use actual indices || initial = 0
   const [currentIndex, setCurrentIndex] = useState<number>(
@@ -89,6 +108,21 @@ function Swiper<T extends ItemData>({
   // Animation values
   const translateX = useSharedValue<number>(-currentIndex * SCREEN_WIDTH);
   const isGestureActive = useSharedValue<boolean>(false);
+
+  // Check if we're approaching the end of the items
+  useEffect(() => {
+    const distanceToEnd = itemCount - currentIndex - 1;
+    if (distanceToEnd <= threshold && onNearEnd) {
+      onNearEnd();
+    }
+  }, [currentIndex, itemCount, threshold, onNearEnd]);
+
+  // Handle translateX adjustment when new items are added
+  useEffect(() => {
+    // Ensure our animation value matches the current position
+    // This is important when items are added dynamically
+    translateX.value = -currentIndex * SCREEN_WIDTH;
+  }, [itemCount, currentIndex, translateX]);
 
   // Update the current index - this function will be called through runOnJS
   const updateIndex = useCallback((newIndex: number) => {
@@ -106,17 +140,15 @@ function Swiper<T extends ItemData>({
     for (let i = startIdx; i <= endIdx; i++) {
       visibleItems.push({
         index: i,
-        item: initialItems[i],
+        item: items[i],
       });
     }
 
     return visibleItems;
-  }, [currentIndex, initialItems, itemCount]);
+  }, [currentIndex, items, itemCount]);
 
   // Get currently visible items
   const visibleItems = useMemo(() => getVisibleItems(), [getVisibleItems]);
-
-  console.log('visibleItems', visibleItems.length);
 
   // Pan gesture handler
   const panGesture = Gesture.Pan()
@@ -195,7 +227,7 @@ function Swiper<T extends ItemData>({
 
       {/* Pagination indicators */}
       <View className="absolute top-10 w-full flex-row items-center justify-center">
-        {initialItems.map((_, index) => (
+        {items.map((_, index) => (
           <View
             key={index}
             className={`mx-1 h-2 w-2 rounded-full ${
@@ -206,7 +238,9 @@ function Swiper<T extends ItemData>({
       </View>
 
       {/* Debug panel - only shown if requested */}
-      {showDebugPanel && <DebugLog log={visibleItems} currentIndex={currentIndex} />}
+      {showDebugPanel && (
+        <DebugLog log={visibleItems} currentIndex={currentIndex} totalItems={itemCount} />
+      )}
     </View>
   );
 }
