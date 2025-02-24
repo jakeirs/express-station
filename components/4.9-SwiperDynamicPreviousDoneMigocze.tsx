@@ -33,7 +33,7 @@ interface SwiperProps<T extends ItemData> {
   initialItems: T[];
   renderItem: RenderItemFunction<T>;
   initialIndex?: number;
-  onSwipeEnd?: (info: { 
+  onSwipeEnd?: (info: {
     direction: SwipeDirection;
     currentIndex: number;
     distanceFromEdge: number;
@@ -58,11 +58,11 @@ interface DebugLogProps<T extends ItemData> {
 }
 
 // Debug component to visualize what's happening
-function DebugLog<T extends ItemData>({ 
-  log, 
-  currentIndex, 
+function DebugLog<T extends ItemData>({
+  log,
+  currentIndex,
   totalItems,
-  prependedItems
+  prependedItems,
 }: DebugLogProps<T>) {
   const visibleItemsIds = log.map((item) => item.index);
   const distanceToStart = currentIndex;
@@ -104,36 +104,35 @@ function Swiper<T extends ItemData>({
   // Track how many items have been prepended to handle index adjustments
   const prependedItemsRef = useRef<number>(0);
   const [prependedItems, setPrependedItems] = useState(0);
-  
+
   // Use state for items to properly handle updates
   const [items, setItems] = useState<T[]>(initialItems);
-  
+
   // Track the previous items length to detect prepended items
   const prevItemsLengthRef = useRef<number>(initialItems.length);
-  
+
   // Update items when initialItems changes, with special handling for prepended items
   useEffect(() => {
     // If new items array is longer than the previous one
     if (initialItems.length > prevItemsLengthRef.current) {
       // Calculate how many items were added
       const addedItems = initialItems.length - prevItemsLengthRef.current;
-      
+
       // Check if items were prepended by comparing first few IDs
       // This is a heuristic - you may need a more robust method depending on your data
-      const itemsWerePrepended = addedItems > 0 && 
-        initialItems[addedItems].id === items[0]?.id;
-      
+      const itemsWerePrepended = addedItems > 0 && initialItems[addedItems].id === items[0]?.id;
+
       if (itemsWerePrepended) {
         // Update our prepended items counter
         const newPrependedCount = prependedItemsRef.current + addedItems;
         prependedItemsRef.current = newPrependedCount;
         setPrependedItems(newPrependedCount);
-        
+
         // Adjust current index by the number of prepended items
-        setCurrentIndex(prevIndex => prevIndex + addedItems);
+        setCurrentIndex((prevIndex) => prevIndex + addedItems);
       }
     }
-    
+
     // Update our items and record the new length
     setItems(initialItems);
     prevItemsLengthRef.current = initialItems.length;
@@ -151,42 +150,49 @@ function Swiper<T extends ItemData>({
   const isGestureActive = useSharedValue<boolean>(false);
 
   // Handle translateX adjustment when new items are added or current index changes
+  // Only adjust translateX when the itemCount changes (new items added)
   useEffect(() => {
-    // Ensure our animation value matches the current position
-    translateX.value = -currentIndex * SCREEN_WIDTH;
-  }, [currentIndex, translateX]);
+    // Don't update if we're in the middle of a gesture
+    if (!isGestureActive.value) {
+      translateX.value = -currentIndex * SCREEN_WIDTH;
+    }
+  }, [itemCount, translateX]);
 
   // Check fetch conditions and enhance onSwipeEnd with additional information
   const handleSwipeEnd = useCallback(
     (direction: SwipeDirection, index: number) => {
       if (!onSwipeEnd) return;
 
-      const distanceFromEdge = direction === 'next' 
-        ? itemCount - index - 1  // Distance to end
-        : index;                 // Distance to start
-      
+      const distanceFromEdge =
+        direction === 'next'
+          ? itemCount - index - 1 // Distance to end
+          : index; // Distance to start
+
       // Determine if we should fetch based on distance from edge
       const shouldFetch = distanceFromEdge <= fetchThreshold;
-      
+
       onSwipeEnd({
         direction,
         currentIndex: index,
         distanceFromEdge,
-        shouldFetch
+        shouldFetch,
       });
     },
     [itemCount, fetchThreshold, onSwipeEnd]
   );
 
   // Update the current index - this function will be called through runOnJS
-  const updateIndex = useCallback((newIndex: number, direction?: SwipeDirection) => {
-    setCurrentIndex(newIndex);
-    
-    // If direction is provided, check if we need to fetch more data
-    if (direction) {
-      handleSwipeEnd(direction, newIndex);
-    }
-  }, [handleSwipeEnd]);
+  const updateIndex = useCallback(
+    (newIndex: number, direction?: SwipeDirection) => {
+      setCurrentIndex(newIndex);
+
+      // If direction is provided, check if we need to fetch more data
+      if (direction) {
+        handleSwipeEnd(direction, newIndex);
+      }
+    },
+    [handleSwipeEnd]
+  );
 
   // Calculate which items should be visible for optimization
   const getVisibleItems = useCallback((): VisibleItem<T>[] => {
@@ -300,9 +306,9 @@ function Swiper<T extends ItemData>({
 
       {/* Debug panel - only shown if requested */}
       {showDebugPanel && (
-        <DebugLog 
-          log={visibleItems} 
-          currentIndex={currentIndex} 
+        <DebugLog
+          log={visibleItems}
+          currentIndex={currentIndex}
           totalItems={itemCount}
           prependedItems={prependedItems}
         />
