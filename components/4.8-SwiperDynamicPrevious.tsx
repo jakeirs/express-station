@@ -12,7 +12,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 const VISIBLE_ITEMS_THRESHOLD = 2;
-const FETCH_TRIGGER_THRESHOLD = 6; // How many items from the end to trigger fetch
+const FETCH_THRESHOLD = 4; // How many items from the edge to trigger fetch
 
 export type SwipeDirection = 'next' | 'previous';
 
@@ -33,9 +33,13 @@ interface SwiperProps<T extends ItemData> {
   initialItems: T[];
   renderItem: RenderItemFunction<T>;
   initialIndex?: number;
-  onSwipeEnd?: (info: { direction: SwipeDirection }) => void;
-  onNearEnd?: () => void; // Callback when approaching end of items
-  nearEndThreshold?: number; // Override the default threshold
+  onSwipeEnd?: (info: { 
+    direction: SwipeDirection;
+    currentIndex: number;
+    distanceFromEdge: number;
+    shouldFetch: boolean;
+  }) => void;
+  fetchThreshold?: number; // Override the default threshold
   showDebugPanel?: boolean;
 }
 
@@ -55,6 +59,8 @@ interface DebugLogProps<T extends ItemData> {
 // Debug component to visualize what's happening
 function DebugLog<T extends ItemData>({ log, currentIndex, totalItems }: DebugLogProps<T>) {
   const visibleItemsIds = log.map((item) => item.index);
+  const distanceToStart = currentIndex;
+  const distanceToEnd = totalItems - currentIndex - 1;
 
   return (
     <ScrollView
@@ -73,20 +79,19 @@ function DebugLog<T extends ItemData>({ log, currentIndex, totalItems }: DebugLo
       <Text className="text-xs text-orange-400">Visible Items Count: {log.length}</Text>
       <Text className="text-xs text-blue-400">Total Items: {totalItems}</Text>
       <Text className="text-xs text-yellow-400">
-        Distance to End: {totalItems - currentIndex - 1}
+        Distance to Start: {distanceToStart} | Distance to End: {distanceToEnd}
       </Text>
     </ScrollView>
   );
 }
 
-// Main component with generic type support
+// Main Swiper component with generic type support
 function Swiper<T extends ItemData>({
   initialItems,
   renderItem,
   initialIndex = 0,
   onSwipeEnd,
-  onNearEnd,
-  nearEndThreshold,
+  fetchThreshold = FETCH_THRESHOLD,
   showDebugPanel = false,
 }: SwiperProps<T>) {
   // Use state for items to properly handle updates
@@ -98,7 +103,6 @@ function Swiper<T extends ItemData>({
   }, [initialItems]);
 
   const itemCount = items.length;
-  const threshold = nearEndThreshold || FETCH_TRIGGER_THRESHOLD;
 
   // State management - use actual indices || initial = 0
   const [currentIndex, setCurrentIndex] = useState<number>(
@@ -109,25 +113,43 @@ function Swiper<T extends ItemData>({
   const translateX = useSharedValue<number>(-currentIndex * SCREEN_WIDTH);
   const isGestureActive = useSharedValue<boolean>(false);
 
-  // Check if we're approaching the end of the items
-  useEffect(() => {
-    const distanceToEnd = itemCount - currentIndex - 1;
-    if (distanceToEnd <= threshold && onNearEnd) {
-      onNearEnd();
-    }
-  }, [currentIndex, itemCount, threshold, onNearEnd]);
-
   // Handle translateX adjustment when new items are added
   useEffect(() => {
     // Ensure our animation value matches the current position
-    // This is important when items are added dynamically
     translateX.value = -currentIndex * SCREEN_WIDTH;
   }, [itemCount, currentIndex, translateX]);
 
+  // Check fetch conditions and enhance onSwipeEnd with additional information
+  const handleSwipeEnd = useCallback(
+    (direction: SwipeDirection, index: number) => {
+      if (!onSwipeEnd) return;
+
+      const distanceFromEdge = direction === 'next' 
+        ? itemCount - index - 1  // Distance to end
+        : index;                 // Distance to start
+      
+      // Determine if we should fetch based on distance from edge
+      const shouldFetch = distanceFromEdge <= fetchThreshold;
+      
+      onSwipeEnd({
+        direction,
+        currentIndex: index,
+        distanceFromEdge,
+        shouldFetch
+      });
+    },
+    [itemCount, fetchThreshold, onSwipeEnd]
+  );
+
   // Update the current index - this function will be called through runOnJS
-  const updateIndex = useCallback((newIndex: number) => {
+  const updateIndex = useCallback((newIndex: number, direction?: SwipeDirection) => {
     setCurrentIndex(newIndex);
-  }, []);
+    
+    // If direction is provided, check if we need to fetch more data
+    if (direction) {
+      handleSwipeEnd(direction, newIndex);
+    }
+  }, [handleSwipeEnd]);
 
   // Calculate which items should be visible for optimization
   const getVisibleItems = useCallback((): VisibleItem<T>[] => {
@@ -170,21 +192,22 @@ function Swiper<T extends ItemData>({
       const distanceThreshold = Math.abs(event.translationX) > SWIPE_THRESHOLD;
 
       let newIndex = currentIndex;
+      let direction: SwipeDirection | undefined;
 
       if (velocityThreshold || distanceThreshold) {
         if (event.velocityX > 0 || event.translationX > 0) {
           // Move backward but with boundary check
           newIndex = Math.max(0, currentIndex - 1);
 
-          if (onSwipeEnd && currentIndex !== newIndex) {
-            runOnJS(onSwipeEnd)({ direction: 'previous' });
+          if (currentIndex !== newIndex) {
+            direction = 'previous';
           }
         } else {
           // Move forward but with boundary check
           newIndex = Math.min(itemCount - 1, currentIndex + 1);
 
-          if (onSwipeEnd && currentIndex !== newIndex) {
-            runOnJS(onSwipeEnd)({ direction: 'next' });
+          if (currentIndex !== newIndex) {
+            direction = 'next';
           }
         }
       }
@@ -198,7 +221,8 @@ function Swiper<T extends ItemData>({
       });
 
       // We must use runOnJS to update React state from the worklet
-      runOnJS(updateIndex)(newIndex);
+      // Pass the direction if we actually moved
+      runOnJS(updateIndex)(newIndex, direction);
     });
 
   // Animated style for smooth transitions

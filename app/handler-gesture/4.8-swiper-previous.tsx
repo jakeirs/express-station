@@ -1,86 +1,211 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, ActivityIndicator, SafeAreaView } from 'react-native';
+import Swiper, { SwipeDirection, ItemData } from '~/components/4.8-SwiperDynamicPrevious'; // Import the Swiper component you've already created
 
-import Swiper from '~/components/4.7-SwiperDynamicAdd';
-
-export type SwipeDirection = 'next' | 'previous';
-
-// Generic type for item data
-export interface ItemData {
-  id: string | number;
-  [key: string]: any; // Allow for any additional properties
-}
-
-// Example item interface - you can replace this with your actual data structure
-interface ExampleItem extends ItemData {
-  title: string;
-  description: string;
-  color: string;
+// Define our item structure with TypeScript
+interface CalendarItem extends ItemData {
+  id: string;
   date: string;
+  day: number;
+  month: string;
+  year: number;
+  events: string[];
+  color: string;
 }
 
-// Type for render item function
-export type RenderItemFunction<T extends ItemData> = (info: {
-  item: T;
-  index: number;
-}) => React.ReactNode;
-
-// Generate example data for demonstration
-const generateItems = (startId: number, count: number): ExampleItem[] => {
-  const colors = ['#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3', '#33FFF3'];
-  return Array.from({ length: count }, (_, i) => ({
-    id: `item_${startId + i}`,
-    title: `Item ${startId + i}`,
-    description: `This is the description for item ${startId + i}`,
-    color: colors[Math.floor(Math.random() * colors.length)],
-    date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split('T')[0],
-  }));
+// Generate a date string in YYYY-MM-DD format
+const formatDateString = (date: Date): string => {
+  return date.toISOString().split('T')[0];
 };
 
-// Main component implementation
-const SwiperImplementation = () => {
-  // Initial set of items
-  const [items, setItems] = useState<ExampleItem[]>(generateItems(1, 12));
-  const [isLoading, setIsLoading] = useState(false);
+// Generate a random color
+const getRandomColor = (): string => {
+  const colors = [
+    '#FF6B6B',
+    '#4ECDC4',
+    '#45B7D1',
+    '#FFBE0B',
+    '#FB5607',
+    '#8338EC',
+    '#3A86FF',
+    '#606C38',
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+};
 
-  // Handle when we're approaching the end of items
-  const handleNearEnd = useCallback(() => {
-    if (!isLoading) {
-      console.log('Near end, fetching more items...');
-      setIsLoading(true);
+// Generate calendar items for a date range
+const generateCalendarItems = (startDate: Date, days: number): CalendarItem[] => {
+  const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
 
-      // Simulate fetching more data with a delay
-      setTimeout(() => {
-        const nextId = items.length + 1;
-        const newItems = generateItems(nextId, 8);
-        setItems((prevItems) => [...prevItems, ...newItems]);
-        setIsLoading(false);
-        console.log(`Added ${newItems.length} new items`);
-      }, 1500); // 1.5 second delay to simulate network request
-    }
-  }, [items, isLoading]);
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + index);
 
-  // Handle swipe events
-  const handleSwipeEnd = useCallback(({ direction }: { direction: SwipeDirection }) => {
-    console.log(`Swiped ${direction}`);
-  }, []);
+    // Generate 0-3 random events for this day
+    const eventCount = Math.floor(Math.random() * 4);
+    const events = Array.from(
+      { length: eventCount },
+      (_, i) => `Event ${i + 1} on ${date.getDate()} ${months[date.getMonth()]}`
+    );
 
-  // Custom render function for each item
-  const renderItem = useCallback(
-    ({ item, index }: { item: ExampleItem; index: number }) => (
+    return {
+      id: formatDateString(date),
+      date: formatDateString(date),
+      day: date.getDate(),
+      month: months[date.getMonth()],
+      year: date.getFullYear(),
+      events,
+      color: getRandomColor(),
+    };
+  });
+};
+
+const SwiperImplementation: React.FC = () => {
+  // Current date as the reference point
+  const today = new Date();
+
+  // State for our calendar items
+  const [calendarItems, setCalendarItems] = useState<CalendarItem[]>(() => {
+    // Initially generate 15 days centered around today
+    const initialStartDate = new Date(today);
+    initialStartDate.setDate(today.getDate() - 7); // Start 7 days before today
+    return generateCalendarItems(initialStartDate, 15);
+  });
+
+  // Track loading states separately for previous and next
+  const [isLoadingPrevious, setIsLoadingPrevious] = useState<boolean>(false);
+  const [isLoadingNext, setIsLoadingNext] = useState<boolean>(false);
+
+  // Find the index of today in our items array to set as initial
+  const findTodayIndex = useCallback(() => {
+    const todayString = formatDateString(today);
+    return calendarItems.findIndex((item) => item.date === todayString);
+  }, [calendarItems]);
+
+  // Initial index calculation
+  const [initialIndex] = useState<number>(() => {
+    const index = findTodayIndex();
+    return index !== -1 ? index : Math.floor(calendarItems.length / 2);
+  });
+
+  // Handler for fetching more data based on swipe direction
+  const handleSwipeEnd = useCallback(
+    ({
+      direction,
+      currentIndex,
+      distanceFromEdge,
+      shouldFetch,
+    }: {
+      direction: SwipeDirection;
+      currentIndex: number;
+      distanceFromEdge: number;
+      shouldFetch: boolean;
+    }) => {
+      console.log(`Swiped ${direction} to index ${currentIndex}`);
+      console.log(`Distance from ${direction === 'next' ? 'end' : 'start'}: ${distanceFromEdge}`);
+      console.log(`Should fetch: ${shouldFetch}`);
+
+      // Only fetch if we're close to the edge and not already loading
+      if (!shouldFetch) return;
+
+      if (direction === 'next' && !isLoadingNext) {
+        // Fetch future dates
+        setIsLoadingNext(true);
+
+        // Get the last date in our current array
+        const lastItem = calendarItems[calendarItems.length - 1];
+        const lastDate = new Date(lastItem.date);
+        const newStartDate = new Date(lastDate);
+        newStartDate.setDate(newStartDate.getDate() + 1); // Start from the day after our last item
+
+        console.log(`Fetching next days starting from ${formatDateString(newStartDate)}`);
+
+        // Simulate API call delay
+        setTimeout(() => {
+          const newItems = generateCalendarItems(newStartDate, 10);
+          setCalendarItems((prev) => [...prev, ...newItems]);
+          setIsLoadingNext(false);
+          console.log(`Added ${newItems.length} new future days`);
+        }, 1500);
+      } else if (direction === 'previous' && !isLoadingPrevious) {
+        // Fetch past dates
+        setIsLoadingPrevious(true);
+
+        // Get the first date in our current array
+        const firstItem = calendarItems[0];
+        const firstDate = new Date(firstItem.date);
+        const newEndDate = new Date(firstDate);
+        newEndDate.setDate(newEndDate.getDate() - 1); // End with the day before our first item
+
+        // Calculate start date for the new batch (10 days before)
+        const newStartDate = new Date(newEndDate);
+        newStartDate.setDate(newEndDate.getDate() - 9); // 10 days total
+
+        console.log(
+          `Fetching previous days starting from ${formatDateString(newStartDate)} to ${formatDateString(newEndDate)}`
+        );
+
+        // Simulate API call delay
+        setTimeout(() => {
+          const newItems = generateCalendarItems(newStartDate, 10);
+
+          // When adding items to the beginning, we need to update currentIndex
+          // to keep the same day visible
+          setCalendarItems((prev) => [...newItems, ...prev]);
+          setIsLoadingPrevious(false);
+          console.log(`Added ${newItems.length} new past days`);
+        }, 1500);
+      }
+    },
+    [calendarItems, isLoadingNext, isLoadingPrevious]
+  );
+
+  // Render each calendar item
+  const renderCalendarItem = useCallback(
+    ({ item, index }: { item: CalendarItem; index: number }) => (
       <View className="flex-1 p-6" style={{ backgroundColor: item.color }}>
         <View className="flex-1 justify-between">
           <View>
-            <Text className="text-2xl font-bold text-white">{item.title}</Text>
-            <Text className="mt-2 text-white/80">{item.description}</Text>
-            <Text className="mt-2 text-white/60">Index in list: {index}</Text>
+            <Text className="text-3xl font-bold text-white">{item.day}</Text>
+            <Text className="text-xl text-white/90">
+              {item.month} {item.year}
+            </Text>
+
+            <View className="mt-6 rounded-lg bg-black/10 p-3">
+              <Text className="mb-2 text-white">Index in list: {index}</Text>
+              <Text className="text-white/80">Date: {item.date}</Text>
+            </View>
+
+            {item.events.length > 0 && (
+              <View className="mt-6">
+                <Text className="mb-2 font-semibold text-white">Events:</Text>
+                {item.events.map((event, i) => (
+                  <View key={i} className="mb-2 rounded-md bg-white/20 p-2">
+                    <Text className="text-white">{event}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
 
-          <View className="flex-row items-center justify-between">
+          <View className="mt-4 flex-row items-center justify-between">
             <View className="rounded-full bg-black/20 px-3 py-1">
-              <Text className="text-xs text-white">Date: {item.date}</Text>
+              <Text className="text-xs text-white">
+                {item.events.length} {item.events.length === 1 ? 'event' : 'events'}
+              </Text>
             </View>
 
             <View className="rounded-full bg-white/20 px-3 py-1">
@@ -94,24 +219,33 @@ const SwiperImplementation = () => {
   );
 
   return (
-    <View className="flex-1">
-      <Swiper
-        initialItems={items}
-        renderItem={renderItem}
-        initialIndex={1} // Start from the second item
-        onSwipeEnd={handleSwipeEnd}
-        onNearEnd={handleNearEnd}
-        nearEndThreshold={4} // Trigger fetch when 4 items from the end
-        showDebugPanel={true}
-      />
+    <SafeAreaView className="flex-1">
+      <View className="flex-1">
+        <Swiper
+          initialItems={calendarItems}
+          renderItem={renderCalendarItem}
+          initialIndex={initialIndex}
+          onSwipeEnd={handleSwipeEnd}
+          fetchThreshold={3} // Start fetching when 3 items from either edge
+          showDebugPanel={true}
+        />
 
-      {/* Loading indicator when fetching more items */}
-      {isLoading && (
-        <View className="absolute bottom-36 right-4 rounded-full bg-black/50 p-2">
-          <ActivityIndicator size="small" color="#ffffff" />
+        {/* Loading indicators */}
+        <View className="absolute top-16 w-full flex-row justify-between px-4">
+          {isLoadingPrevious && (
+            <View className="rounded-full bg-black/50 p-2">
+              <ActivityIndicator size="small" color="#ffffff" />
+            </View>
+          )}
+
+          {isLoadingNext && (
+            <View className="ml-auto rounded-full bg-black/50 p-2">
+              <ActivityIndicator size="small" color="#ffffff" />
+            </View>
+          )}
         </View>
-      )}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
