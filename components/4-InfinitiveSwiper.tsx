@@ -69,11 +69,13 @@ const InfiniteSwiper = ({ children }) => {
     [itemCount]
   );
 
+  // CLEARING
   // Calculate which items should be visible based on current index
   const updateVisibleRange = useCallback((currentVirtual) => {
     const start = currentVirtual - VISIBLE_ITEMS_THRESHOLD;
     const end = currentVirtual + VISIBLE_ITEMS_THRESHOLD;
     setVisibleRange({ start, end });
+    console.log('start', start, end);
   }, []);
 
   // Generate currently visible items

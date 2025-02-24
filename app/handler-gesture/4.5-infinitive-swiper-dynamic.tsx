@@ -1,49 +1,62 @@
-import React, { useState } from 'react';
-import { View, Text } from 'react-native';
+import React from 'react';
+import { Text, View } from 'react-native';
 import InfiniteSwiper from '~/components/4.5-InfinitiveSwiperDynamic';
 
-export default function SwiperDemo() {
-  const [items, setItems] = useState([
-    // Your 12 initial slides here
-  ]);
-
-  const handleEndSwipe = async (direction, virtualIndex) => {
-    console.log(`Swiped ${direction} at virtual index ${virtualIndex}`);
-
-    // Simulate an API fetch with a delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    if (direction === 'next') {
-      // Return 3 new items to add at the end
-      return [
-        <View
-          key="new1"
-          style={{ backgroundColor: '#ff9966', flex: 1 }}
-          className="h-96 w-full p-2">
-          <Text>New Next Slide 1</Text>
-        </View>,
-        // More new items...
-      ];
-    } else {
-      // Return items to add at the beginning
-      return [
-        <View
-          key="prev1"
-          style={{ backgroundColor: '#99ccff', flex: 1 }}
-          className="h-96 w-full p-2">
-          <Text>New Previous Slide 1</Text>
-        </View>,
-        // More new items...
-      ];
-    }
-  };
+export default function SwiperImplementation() {
+  // Create an array of different colored slides
+  const slides = [
+    {
+      id: 1,
+      color: '#FF4081', // Pink
+      title: 'Welcome to Infinite Swiper',
+      description: 'Swipe in any direction to explore content',
+    },
+    {
+      id: 2,
+      color: '#7C4DFF', // Purple
+      title: 'Smooth Transitions',
+      description: 'Gestures and animations create a fluid experience',
+    },
+    {
+      id: 3,
+      color: '#00BCD4', // Cyan
+      title: 'Smart Recycling',
+      description: "Only renders what's needed for optimal performance",
+    },
+    {
+      id: 4,
+      color: '#4CAF50', // Green
+      title: 'Infinite Content',
+      description: 'Seamlessly scroll through endless content',
+    },
+    {
+      id: 5,
+      color: '#FFC107', // Amber
+      title: 'Customizable',
+      description: 'Make it your own with custom styling',
+    },
+  ];
 
   return (
-    <View style={{ flex: 1 }}>
-      <InfiniteSwiper
-        initialIndex={6} // Start in the middle (7th item, index 6)
-        onEndSwipe={handleEndSwipe}>
-        {items}
+    <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
+      {/* 
+        Using InfiniteSwiper with initialIndex set to 2, 
+        which means we'll start at the third slide (index 2).
+        Since we didn't specify initialIndex, it would start from the middle by default.
+      */}
+      <InfiniteSwiper initialIndex={2}>
+        {slides.map((slide) => (
+          <View
+            key={slide.id}
+            className="w-full flex-1 items-center justify-center p-6"
+            style={{ backgroundColor: slide.color }}>
+            <Text className="mb-4 text-3xl font-bold text-white">{slide.title}</Text>
+            <Text className="text-xl text-white">{slide.description}</Text>
+            <View className="mt-8 rounded-lg bg-white/20 p-4">
+              <Text className="text-white">Slide ID: {slide.id}</Text>
+            </View>
+          </View>
+        ))}
       </InfiniteSwiper>
     </View>
   );

@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { View, Dimensions } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, Dimensions, ScrollView, Text } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -8,78 +8,99 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
+// Define our screen dimensions and thresholds
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 const VISIBLE_ITEMS_THRESHOLD = 5;
 
-const InfiniteSwiper = ({
-  children,
-  onEndSwipe,
-  initialIndex = null, // Custom starting index (optional)
-}) => {
-  // Convert children to array for manipulation
-  const [items, setItems] = useState(React.Children.toArray(children));
-  const itemCount = items.length;
+// Define TypeScript interfaces for our data structures
+interface VisibleItem {
+  virtualIndex: number;
+  realIndex: number;
+  content: React.ReactNode;
+}
 
-  // Calculate initial position - use provided index or middle item
-  const getInitialIndex = () => {
-    if (initialIndex !== null && initialIndex >= 0 && initialIndex < itemCount) {
-      // If valid initialIndex is provided, use it with a large offset
-      return initialIndex + itemCount * 1000;
+interface VisibleRange {
+  start: number;
+  end: number;
+}
+
+interface DebugLogProps {
+  log: VisibleItem[];
+  virtualIndex: number;
+}
+
+interface InfiniteSwiperProps {
+  children: React.ReactNode[];
+  initialIndex?: number; // Optional prop to specify which item to start with
+}
+
+// Debug component to visualize what's happening
+const DebugLog: React.FC<DebugLogProps> = ({ log, virtualIndex }) => {
+  const visibleItemsIds = log.map((item) => item.realIndex);
+  const visibleItemsIdsVirtual = log.map((item) => item.virtualIndex);
+
+  return (
+    <ScrollView
+      className="absolute bottom-0 left-0 right-0 h-32 bg-black/80"
+      contentContainerClassName="p-2">
+      <Text className="mb-1 text-xs text-white">Real Indices:</Text>
+      <View className="mb-2 flex flex-row">
+        {visibleItemsIds.map((entry, index) => (
+          <Text key={index} className="mr-1 text-xs text-green-400">
+            {entry}
+          </Text>
+        ))}
+      </View>
+
+      <Text className="mb-1 text-xs text-white">Virtual Indices:</Text>
+      <View className="mb-2 flex flex-row">
+        {visibleItemsIdsVirtual.map((entry, index) => (
+          <Text key={index} className="mr-1 text-xs text-blue-400">
+            {entry}
+          </Text>
+        ))}
+      </View>
+      <Text className="text-xs text-red-400">Current Virtual Index: {virtualIndex}</Text>
+      <Text className="text-xs text-orange-400">Visible Items Count: {log.length}</Text>
+    </ScrollView>
+  );
+};
+
+const InfiniteSwiper: React.FC<InfiniteSwiperProps> = ({ children, initialIndex }) => {
+  // Convert children to array for easier manipulation
+  const originalItems = React.Children.toArray(children);
+  const itemCount = originalItems.length;
+
+  // Find the starting index - either use the provided initialIndex or default to the middle
+  const getStartingIndex = () => {
+    if (initialIndex !== undefined && initialIndex >= 0 && initialIndex < itemCount) {
+      // If a valid initialIndex is provided, use it
+      return Math.floor(itemCount * 1000) + initialIndex;
+    } else if (itemCount > 0) {
+      // Start from the middle of the array if no initialIndex is provided
+      const middleIndex = Math.floor(itemCount / 2);
+      return Math.floor(itemCount * 1000) + middleIndex;
     }
-    // Otherwise start in the middle (default)
-    const middleIndex = Math.floor(itemCount / 2);
-    return middleIndex + itemCount * 1000;
+    return Math.floor(itemCount * 1000); // Fallback to first item
   };
 
-  const initialVirtualIndex = getInitialIndex();
+  const initialVirtualIndex = getStartingIndex();
 
-  // State for managing virtual index and visible range
-  const [virtualIndex, setVirtualIndex] = useState(initialVirtualIndex);
-  const [visibleRange, setVisibleRange] = useState({
+  // State management
+  const [virtualIndex, setVirtualIndex] = useState<number>(initialVirtualIndex);
+  const [visibleRange, setVisibleRange] = useState<VisibleRange>({
     start: initialVirtualIndex - VISIBLE_ITEMS_THRESHOLD,
     end: initialVirtualIndex + VISIBLE_ITEMS_THRESHOLD,
   });
 
   // Animation values
-  const translateX = useSharedValue(-initialVirtualIndex * SCREEN_WIDTH);
-  const isGestureActive = useSharedValue(false);
-
-  // Handle adding new items to either end of the array
-  const addItems = useCallback(
-    (newItems, direction) => {
-      if (!newItems || !newItems.length) return;
-
-      setItems((currentItems) => {
-        if (direction === 'next') {
-          // Add items to the end
-          return [...currentItems, ...newItems];
-        } else {
-          // Add items to the beginning and adjust virtualIndex to maintain position
-          // We need to adjust all index-related values to account for the shift
-          const adjustAmount = newItems.length;
-
-          // Schedule the virtualIndex update for the next render cycle
-          // This ensures we don't get a visual jump
-          setTimeout(() => {
-            setVirtualIndex((prevIndex) => prevIndex + adjustAmount);
-            setVisibleRange((prev) => ({
-              start: prev.start + adjustAmount,
-              end: prev.end + adjustAmount,
-            }));
-            translateX.value = -(virtualIndex + adjustAmount) * SCREEN_WIDTH;
-          }, 0);
-
-          return [...newItems, ...currentItems];
-        }
-      });
-    },
-    [virtualIndex, translateX]
-  );
+  const translateX = useSharedValue<number>(-initialVirtualIndex * SCREEN_WIDTH);
+  const isGestureActive = useSharedValue<boolean>(false);
 
   // Calculate real index from virtual index
   const getRealIndex = useCallback(
-    (virtual) => {
+    (virtual: number): number => {
       let real = virtual % itemCount;
       if (real < 0) real += itemCount;
       return real;
@@ -87,52 +108,34 @@ const InfiniteSwiper = ({
     [itemCount]
   );
 
-  // Update visible range based on current index
-  const updateVisibleRange = useCallback((currentVirtual) => {
+  // Calculate which items should be visible based on current index
+  const updateVisibleRange = useCallback((currentVirtual: number) => {
     const start = currentVirtual - VISIBLE_ITEMS_THRESHOLD;
     const end = currentVirtual + VISIBLE_ITEMS_THRESHOLD;
     setVisibleRange({ start, end });
   }, []);
 
   // Generate currently visible items
-  const visibleItems = useMemo(() => {
-    const visItems = [];
+  const visibleItems = useMemo((): VisibleItem[] => {
+    const items: VisibleItem[] = [];
     for (let i = visibleRange.start; i <= visibleRange.end; i++) {
       const realIndex = getRealIndex(i);
-      visItems.push({
+      items.push({
         virtualIndex: i,
         realIndex,
-        content: items[realIndex],
+        content: originalItems[realIndex],
       });
     }
-    return visItems;
-  }, [visibleRange, getRealIndex, items]);
+    return items;
+  }, [visibleRange, getRealIndex, originalItems]);
 
   // Handle index updates
   const updateIndex = useCallback(
-    (newVirtualIndex) => {
+    (newVirtualIndex: number) => {
       setVirtualIndex(newVirtualIndex);
-      updateVisibleRange(newVirtualIndex);
+      runOnJS(updateVisibleRange)(newVirtualIndex);
     },
     [updateVisibleRange]
-  );
-
-  // Handle swipe end and call the callback
-  const handleSwipeEnd = useCallback(
-    async (direction, newVirtualIndex) => {
-      if (!onEndSwipe) return;
-
-      // Call the callback with direction and virtual index
-      try {
-        const newItems = await onEndSwipe(direction, newVirtualIndex);
-        if (newItems && newItems.length > 0) {
-          addItems(newItems, direction);
-        }
-      } catch (error) {
-        console.error('Error in onEndSwipe callback:', error);
-      }
-    },
-    [onEndSwipe, addItems]
   );
 
   // Pan gesture handler
@@ -150,19 +153,16 @@ const InfiniteSwiper = ({
       const distanceThreshold = Math.abs(event.translationX) > SWIPE_THRESHOLD;
 
       let newVirtualIndex = virtualIndex;
-      let direction = null;
 
       if (velocityThreshold || distanceThreshold) {
         if (event.velocityX > 0 || event.translationX > 0) {
-          newVirtualIndex--;
-          direction = 'previous';
+          newVirtualIndex--; // Move backward
         } else {
-          newVirtualIndex++;
-          direction = 'next';
+          newVirtualIndex++; // Move forward
         }
       }
 
-      // Animate to the final position
+      // Animate to the new position
       translateX.value = withSpring(-newVirtualIndex * SCREEN_WIDTH, {
         damping: 20,
         stiffness: 100,
@@ -170,40 +170,27 @@ const InfiniteSwiper = ({
         velocity: event.velocityX,
       });
 
-      // Update the index
+      // Update the virtual index and visible range
       runOnJS(updateIndex)(newVirtualIndex);
-
-      // Call the onEndSwipe callback if direction changed
-      if (direction) {
-        runOnJS(handleSwipeEnd)(direction, newVirtualIndex);
-      }
     });
 
-  // Create animated styles
+  // Animated style for smooth transitions
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
-
-  // Update component when children change externally
-  useEffect(() => {
-    const newChildren = React.Children.toArray(children);
-    if (newChildren.length !== items.length) {
-      setItems(newChildren);
-    }
-  }, [children]);
 
   return (
     <View className="flex-1">
       <GestureDetector gesture={panGesture}>
         <Animated.View className="flex-1 flex-row" style={animatedStyle}>
-          {visibleItems.map(({ virtualIndex, content }) => (
+          {visibleItems.map(({ virtualIndex: vIndex, content }) => (
             <View
-              key={virtualIndex}
+              key={vIndex}
               className="w-screen items-center justify-center"
               style={{
                 width: SCREEN_WIDTH,
                 position: 'absolute',
-                left: virtualIndex * SCREEN_WIDTH,
+                left: vIndex * SCREEN_WIDTH,
               }}>
               <View className="h-full w-full">{content}</View>
             </View>
@@ -212,8 +199,8 @@ const InfiniteSwiper = ({
       </GestureDetector>
 
       {/* Pagination indicators */}
-      <View className="absolute bottom-5 w-full flex-row items-center justify-center">
-        {items.map((_, index) => (
+      <View className="absolute top-10 w-full flex-row items-center justify-center">
+        {originalItems.map((_, index) => (
           <View
             key={index}
             className={`mx-1 h-2 w-2 rounded-full ${
@@ -222,6 +209,9 @@ const InfiniteSwiper = ({
           />
         ))}
       </View>
+
+      {/* Debug panel */}
+      <DebugLog log={visibleItems} virtualIndex={virtualIndex} />
     </View>
   );
 };
