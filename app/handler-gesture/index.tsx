@@ -15,6 +15,10 @@ export default function HandlerGestureExample1Screen() {
           title="infinitive swiper"
         />
         <Button
+          onPress={() => router.push('/handler-gesture/4.5-infinitive-swiper-dynamic')}
+          title="infinitive swiper + dynamic"
+        />
+        <Button
           onPress={() => router.push('/handler-gesture/5-infinitive-fetch')}
           title="infinitive swiper Fetch"
         />

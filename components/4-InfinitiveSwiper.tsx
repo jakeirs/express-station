@@ -15,7 +15,6 @@ const VISIBLE_ITEMS_THRESHOLD = 5;
 const DebugLog = ({ log, virtualIndex }: { log: any[]; virtualIndex: any }) => {
   const visibleItemsIds = log.map((item) => item.realIndex);
   const visibleItemsIdsVirtual = log.map((item) => item.virtualIndex);
-  const visibleItemsContent = log.map((item) => item.content);
 
   return (
     <ScrollView
@@ -59,8 +58,6 @@ const InfiniteSwiper = ({ children }) => {
   // Initialize translateX with the starting position
   const translateX = useSharedValue(-initialVirtualIndex * SCREEN_WIDTH);
   const isGestureActive = useSharedValue(false);
-
-  const [debugLog, setDebugLog] = useState([]);
 
   // Calculate real index from virtual index
   const getRealIndex = useCallback(
