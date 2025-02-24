@@ -75,7 +75,7 @@ export default function SwiperExample() {
     <Swiper
       initialItems={initialItems}
       renderItem={renderItem}
-      initialIndex={0}
+      initialIndex={4}
       onSwipeEnd={handleSwipeEnd}
       showDebugPanel={true} // Set to false to hide the debug panel in production
     />

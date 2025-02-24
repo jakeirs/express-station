@@ -11,7 +11,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 // Define our screen dimensions and thresholds
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
-const VISIBLE_ITEMS_THRESHOLD = 5;
+const VISIBLE_ITEMS_THRESHOLD = 2;
 
 export type SwipeDirection = 'next' | 'previous';
 
@@ -60,7 +60,7 @@ function DebugLog<T extends ItemData>({ log, currentIndex }: DebugLogProps<T>) {
       <View className="mb-2 flex flex-row">
         {visibleItemsIds.map((entry, index) => (
           <Text key={index} className="mr-1 text-xs text-green-400">
-            {entry}
+            {entry}{' '}
           </Text>
         ))}
       </View>
@@ -81,7 +81,7 @@ function Swiper<T extends ItemData>({
 }: SwiperProps<T>) {
   const itemCount = initialItems.length;
 
-  // State management - use actual indices
+  // State management - use actual indices || initial = 0
   const [currentIndex, setCurrentIndex] = useState<number>(
     initialIndex >= 0 && initialIndex < itemCount ? initialIndex : 0
   );
@@ -115,6 +115,8 @@ function Swiper<T extends ItemData>({
 
   // Get currently visible items
   const visibleItems = useMemo(() => getVisibleItems(), [getVisibleItems]);
+
+  console.log('visibleItems', visibleItems.length);
 
   // Pan gesture handler
   const panGesture = Gesture.Pan()
@@ -185,9 +187,7 @@ function Swiper<T extends ItemData>({
                 position: 'absolute',
                 left: index * SCREEN_WIDTH,
               }}>
-              <View className="h-full w-full">
-                {renderItem({ item, index })}
-              </View>
+              <View className="h-full w-full">{renderItem({ item, index })}</View>
             </View>
           ))}
         </Animated.View>
