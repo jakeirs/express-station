@@ -14,6 +14,8 @@ const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 // We still keep this for optimized rendering
 const VISIBLE_ITEMS_THRESHOLD = 5;
 
+export type SwipeDirection = 'next' | 'previous';
+
 // Define TypeScript interfaces for our data structures
 interface VisibleItem {
   index: number;
@@ -28,6 +30,7 @@ interface DebugLogProps {
 interface SwiperProps {
   children: React.ReactNode[];
   initialIndex?: number;
+  onSwipeEnd?: (info: { direction: SwipeDirection }) => void;
 }
 
 // Debug component to visualize what's happening
@@ -38,22 +41,22 @@ const DebugLog: React.FC<DebugLogProps> = ({ log, currentIndex }) => {
     <ScrollView
       className="absolute bottom-0 left-0 right-0 h-32 bg-black/80"
       contentContainerClassName="p-2">
-      <Text className="text-xs text-white mb-1">Visible Indices:</Text>
-      <View className="flex flex-row mb-2">
+      <Text className="mb-1 text-xs text-white">Visible Indices:</Text>
+      <View className="mb-2 flex flex-row">
         {visibleItemsIds.map((entry, index) => (
-          <Text key={index} className="text-xs text-green-400 mr-1">
+          <Text key={index} className="mr-1 text-xs text-green-400">
             {entry}
           </Text>
         ))}
       </View>
-      
+
       <Text className="text-xs text-red-400">Current Index: {currentIndex}</Text>
       <Text className="text-xs text-orange-400">Visible Items Count: {log.length}</Text>
     </ScrollView>
   );
 };
 
-const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0 }) => {
+const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0, onSwipeEnd }) => {
   // Convert children to array for easier manipulation
   const items = React.Children.toArray(children);
   const itemCount = items.length;
@@ -75,18 +78,18 @@ const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0 }) => {
   // Calculate which items should be visible for optimization
   const getVisibleItems = useCallback((): VisibleItem[] => {
     const visibleItems: VisibleItem[] = [];
-    
+
     // We still optimize by only rendering items that could be visible
     const startIdx = Math.max(0, currentIndex - VISIBLE_ITEMS_THRESHOLD);
     const endIdx = Math.min(itemCount - 1, currentIndex + VISIBLE_ITEMS_THRESHOLD);
-    
+
     for (let i = startIdx; i <= endIdx; i++) {
       visibleItems.push({
         index: i,
         content: items[i],
       });
     }
-    
+
     return visibleItems;
   }, [currentIndex, items, itemCount]);
 
@@ -101,7 +104,7 @@ const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0 }) => {
     .onUpdate((event) => {
       // Calculate tentative new position
       const newPosition = -currentIndex * SCREEN_WIDTH + event.translationX;
-      
+
       // Boundary constraints to prevent scrolling beyond the first or last item
       const minTranslate = -(itemCount - 1) * SCREEN_WIDTH;
       translateX.value = Math.max(minTranslate, Math.min(0, newPosition));
@@ -118,9 +121,17 @@ const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0 }) => {
         if (event.velocityX > 0 || event.translationX > 0) {
           // Move backward but with boundary check
           newIndex = Math.max(0, currentIndex - 1);
+
+          if (onSwipeEnd && currentIndex !== newIndex) {
+            runOnJS(onSwipeEnd)({ direction: 'previous' });
+          }
         } else {
           // Move forward but with boundary check
           newIndex = Math.min(itemCount - 1, currentIndex + 1);
+
+          if (onSwipeEnd && currentIndex !== newIndex) {
+            runOnJS(onSwipeEnd)({ direction: 'next' });
+          }
         }
       }
 
@@ -171,7 +182,7 @@ const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0 }) => {
           />
         ))}
       </View>
-      
+
       {/* Debug panel */}
       <DebugLog log={visibleItems} currentIndex={currentIndex} />
     </View>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import Swiper from '~/components/4.6-SwiperDynamic2';
+import Swiper, { type SwipeDirection } from '~/components/4.6-SwiperDynamic2';
 
 // Define some sample slide data to make the example more realistic
 const slides = [
@@ -36,12 +36,16 @@ const slides = [
   },
 ];
 
+const onSwipeEnd = ({ direction }: { direction: SwipeDirection }) => {
+  console.log('direction', direction);
+};
+
 const SwiperExample = () => {
   // We can use the initialIndex prop to start from any slide
   // Here we start from the middle (index 2)
   return (
     <View style={{ flex: 1 }}>
-      <Swiper initialIndex={2}>
+      <Swiper initialIndex={2} onSwipeEnd={onSwipeEnd}>
         {slides.map((slide) => (
           <View
             key={slide.id}
