@@ -38,15 +38,15 @@ const DebugLog: React.FC<DebugLogProps> = ({ log, currentIndex }) => {
     <ScrollView
       className="absolute bottom-0 left-0 right-0 h-32 bg-black/80"
       contentContainerClassName="p-2">
-      <Text className="mb-1 text-xs text-white">Visible Indices:</Text>
-      <View className="mb-2 flex flex-row">
+      <Text className="text-xs text-white mb-1">Visible Indices:</Text>
+      <View className="flex flex-row mb-2">
         {visibleItemsIds.map((entry, index) => (
-          <Text key={index} className="mr-1 text-xs text-green-400">
+          <Text key={index} className="text-xs text-green-400 mr-1">
             {entry}
           </Text>
         ))}
       </View>
-
+      
       <Text className="text-xs text-red-400">Current Index: {currentIndex}</Text>
       <Text className="text-xs text-orange-400">Visible Items Count: {log.length}</Text>
     </ScrollView>
@@ -58,35 +58,35 @@ const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0 }) => {
   const items = React.Children.toArray(children);
   const itemCount = items.length;
 
-  // State management
-  // REMOVED: No more virtual indices - we now use actual indices
+  // State management - use actual indices
   const [currentIndex, setCurrentIndex] = useState<number>(
     initialIndex >= 0 && initialIndex < itemCount ? initialIndex : 0
   );
 
   // Animation values
-  // REMOVED: No need to offset by large multiplier since we're not doing infinite scrolling
   const translateX = useSharedValue<number>(-currentIndex * SCREEN_WIDTH);
   const isGestureActive = useSharedValue<boolean>(false);
 
-  // REMOVED: The getRealIndex function is no longer needed since we're using actual indices
+  // Update the current index - this function will be called through runOnJS
+  const updateIndex = useCallback((newIndex: number) => {
+    setCurrentIndex(newIndex);
+  }, []);
 
   // Calculate which items should be visible for optimization
   const getVisibleItems = useCallback((): VisibleItem[] => {
     const visibleItems: VisibleItem[] = [];
-
+    
     // We still optimize by only rendering items that could be visible
-    // This helps performance with large lists
     const startIdx = Math.max(0, currentIndex - VISIBLE_ITEMS_THRESHOLD);
     const endIdx = Math.min(itemCount - 1, currentIndex + VISIBLE_ITEMS_THRESHOLD);
-
+    
     for (let i = startIdx; i <= endIdx; i++) {
       visibleItems.push({
         index: i,
         content: items[i],
       });
     }
-
+    
     return visibleItems;
   }, [currentIndex, items, itemCount]);
 
@@ -101,8 +101,8 @@ const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0 }) => {
     .onUpdate((event) => {
       // Calculate tentative new position
       const newPosition = -currentIndex * SCREEN_WIDTH + event.translationX;
-
-      // ADDED: Boundary constraints to prevent scrolling beyond the first or last item
+      
+      // Boundary constraints to prevent scrolling beyond the first or last item
       const minTranslate = -(itemCount - 1) * SCREEN_WIDTH;
       translateX.value = Math.max(minTranslate, Math.min(0, newPosition));
     })
@@ -132,9 +132,8 @@ const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0 }) => {
         velocity: event.velocityX,
       });
 
-      // Update the current index
-      // REMOVED: No need for runOnJS since we're not updating a visible range anymore
-      setCurrentIndex(newIndex);
+      // FIXED: We must use runOnJS to update React state from the worklet
+      runOnJS(updateIndex)(newIndex);
     });
 
   // Animated style for smooth transitions
@@ -172,7 +171,7 @@ const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0 }) => {
           />
         ))}
       </View>
-
+      
       {/* Debug panel */}
       <DebugLog log={visibleItems} currentIndex={currentIndex} />
     </View>
