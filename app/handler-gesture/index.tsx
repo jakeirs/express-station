@@ -20,7 +20,15 @@ export default function HandlerGestureExample1Screen() {
         />
         <Button
           onPress={() => router.push('/handler-gesture/4.6-swiper-dynamic')}
-          title="infinitive swiper + dynamic"
+          title="infinitive swiper + init items"
+        />
+        <Button
+          onPress={() => router.push('/handler-gesture/4.7-swiper-dynamic')}
+          title="infinitive swiper + add items"
+        />
+        <Button
+          onPress={() => router.push('/handler-gesture/4.7-swiper-dynamic')}
+          title="infinitive swiper + previous items"
         />
         <Button
           onPress={() => router.push('/handler-gesture/5-infinitive-fetch')}
