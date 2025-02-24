@@ -1,66 +1,83 @@
-import React from 'react';
 import { View, Text } from 'react-native';
-import Swiper, { type SwipeDirection } from '~/components/4.6-SwiperDynamic2';
+import type { SwipeDirection } from '~/components/4.6-SwiperDynamic2';
+import Swiper from '~/components/4.6-SwiperDynamic2';
 
-// Define some sample slide data to make the example more realistic
-const slides = [
-  {
-    id: 1,
-    title: 'Welcome to Swiper',
-    description: 'A simple and efficient swiper for React Native',
-    color: '#ff4081',
-  },
-  {
-    id: 2,
-    title: 'Easy to Use',
-    description: 'Just import and add your content inside',
-    color: '#7c4dff',
-  },
-  {
-    id: 3,
-    title: 'Customizable',
-    description: 'Change the appearance to match your app design',
-    color: '#64b5f6',
-  },
-  {
-    id: 4,
-    title: 'Optimized',
-    description: 'Only renders items that could be visible on screen',
-    color: '#4caf50',
-  },
-  {
-    id: 5,
-    title: 'Get Started Now',
-    description: 'Start implementing in your own projects',
-    color: '#ff9800',
-  },
-];
+export default function SwiperExample() {
+  // Define your item structure
+  interface SwiperItem {
+    id: string;
+    title: string;
+    description: string;
+    date: string;
+    badge: string;
+    color: string;
+  }
 
-const onSwipeEnd = ({ direction }: { direction: SwipeDirection }) => {
-  console.log('direction', direction);
-};
+  // Generate 12 initial items with different colors and data
+  const colors = [
+    'bg-pink-500',
+    'bg-purple-500',
+    'bg-blue-500',
+    'bg-green-500',
+    'bg-yellow-500',
+    'bg-red-500',
+    'bg-indigo-500',
+    'bg-orange-500',
+    'bg-teal-500',
+    'bg-cyan-500',
+    'bg-lime-500',
+    'bg-amber-500',
+  ];
 
-const SwiperExample = () => {
-  // We can use the initialIndex prop to start from any slide
-  // Here we start from the middle (index 2)
-  return (
-    <View style={{ flex: 1 }}>
-      <Swiper initialIndex={2} onSwipeEnd={onSwipeEnd}>
-        {slides.map((slide) => (
-          <View
-            key={slide.id}
-            style={{ backgroundColor: slide.color, flex: 1 }}
-            className="h-full w-full items-center justify-center p-8">
-            <Text className="mb-4 text-3xl font-bold text-white">{slide.title}</Text>
-            <Text className="text-xl text-white">{slide.description}</Text>
-            <Text className="mt-12 text-center text-white/70">
-              Slide {slide.id} of {slides.length}
-            </Text>
+  const badges = ['New', 'Popular', 'Featured', 'Limited', 'Sale', 'Premium'];
+
+  // Generate our 12 items
+  const initialItems: SwiperItem[] = Array.from({ length: 12 }, (_, i) => ({
+    id: `item-${i + 1}`,
+    title: `Item ${i + 1}`,
+    description: `This is a detailed description for item number ${i + 1}. It contains information about this specific item.`,
+    date: new Date(2023, 0, i + 1).toISOString().split('T')[0], // YYYY-MM-DD format
+    badge: badges[i % badges.length],
+    color: colors[i % colors.length],
+  }));
+
+  // Define how each item should be rendered
+  const renderItem = ({ item, index }: { item: SwiperItem; index: number }) => (
+    <View className={`flex-1 ${item.color} p-6`}>
+      <Text className="text-2xl font-bold text-white">{item.title}</Text>
+      <Text className="mt-2 text-white/80">{item.description}</Text>
+
+      <View className="mt-auto">
+        <View className="mb-4 flex-row items-center justify-between">
+          <View className="rounded-full bg-black/20 px-3 py-1">
+            <Text className="text-xs text-white">Date: {item.date}</Text>
           </View>
-        ))}
-      </Swiper>
+
+          <View className="rounded-full bg-white/20 px-3 py-1">
+            <Text className="text-xs text-white">{item.badge}</Text>
+          </View>
+        </View>
+
+        <View className="rounded-lg bg-black/20 p-2">
+          <Text className="text-center text-xs text-white">Item Index: {index}</Text>
+        </View>
+      </View>
     </View>
   );
-};
 
-export default SwiperExample;
+  // Handle swipe events
+  const handleSwipeEnd = ({ direction }: { direction: SwipeDirection }) => {
+    console.log(`Swiped ${direction}`);
+    // Additional logic can go here, like loading more items, etc.
+  };
+
+  return (
+    <Swiper
+      initialItems={initialItems}
+      renderItem={renderItem}
+      initialIndex={0}
+      onSwipeEnd={handleSwipeEnd}
+      showDebugPanel={true} // Set to false to hide the debug panel in production
+    />
+  );
+}

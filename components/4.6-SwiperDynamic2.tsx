@@ -11,30 +11,45 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 // Define our screen dimensions and thresholds
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
-// We still keep this for optimized rendering
 const VISIBLE_ITEMS_THRESHOLD = 5;
 
 export type SwipeDirection = 'next' | 'previous';
 
-// Define TypeScript interfaces for our data structures
-interface VisibleItem {
-  index: number;
-  content: React.ReactNode;
+// Generic type for item data
+export interface ItemData {
+  id: string | number;
+  [key: string]: any; // Allow for any additional properties
 }
 
-interface DebugLogProps {
-  log: VisibleItem[];
+// Type for render item function
+export type RenderItemFunction<T extends ItemData> = (info: {
+  item: T;
+  index: number;
+}) => React.ReactNode;
+
+// Define our component props
+interface SwiperProps<T extends ItemData> {
+  initialItems: T[];
+  renderItem: RenderItemFunction<T>;
+  initialIndex?: number;
+  onSwipeEnd?: (info: { direction: SwipeDirection }) => void;
+  showDebugPanel?: boolean;
+}
+
+// Define visible item structure
+interface VisibleItem<T extends ItemData> {
+  index: number;
+  item: T;
+}
+
+// Debug component props
+interface DebugLogProps<T extends ItemData> {
+  log: VisibleItem<T>[];
   currentIndex: number;
 }
 
-interface SwiperProps {
-  children: React.ReactNode[];
-  initialIndex?: number;
-  onSwipeEnd?: (info: { direction: SwipeDirection }) => void;
-}
-
 // Debug component to visualize what's happening
-const DebugLog: React.FC<DebugLogProps> = ({ log, currentIndex }) => {
+function DebugLog<T extends ItemData>({ log, currentIndex }: DebugLogProps<T>) {
   const visibleItemsIds = log.map((item) => item.index);
 
   return (
@@ -54,12 +69,17 @@ const DebugLog: React.FC<DebugLogProps> = ({ log, currentIndex }) => {
       <Text className="text-xs text-orange-400">Visible Items Count: {log.length}</Text>
     </ScrollView>
   );
-};
+}
 
-const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0, onSwipeEnd }) => {
-  // Convert children to array for easier manipulation
-  const items = React.Children.toArray(children);
-  const itemCount = items.length;
+// Main component with generic type support
+function Swiper<T extends ItemData>({
+  initialItems,
+  renderItem,
+  initialIndex = 0,
+  onSwipeEnd,
+  showDebugPanel = false,
+}: SwiperProps<T>) {
+  const itemCount = initialItems.length;
 
   // State management - use actual indices
   const [currentIndex, setCurrentIndex] = useState<number>(
@@ -76,22 +96,22 @@ const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0, onSwipeEnd 
   }, []);
 
   // Calculate which items should be visible for optimization
-  const getVisibleItems = useCallback((): VisibleItem[] => {
-    const visibleItems: VisibleItem[] = [];
+  const getVisibleItems = useCallback((): VisibleItem<T>[] => {
+    const visibleItems: VisibleItem<T>[] = [];
 
-    // We still optimize by only rendering items that could be visible
+    // We optimize by only rendering items that could be visible
     const startIdx = Math.max(0, currentIndex - VISIBLE_ITEMS_THRESHOLD);
     const endIdx = Math.min(itemCount - 1, currentIndex + VISIBLE_ITEMS_THRESHOLD);
 
     for (let i = startIdx; i <= endIdx; i++) {
       visibleItems.push({
         index: i,
-        content: items[i],
+        item: initialItems[i],
       });
     }
 
     return visibleItems;
-  }, [currentIndex, items, itemCount]);
+  }, [currentIndex, initialItems, itemCount]);
 
   // Get currently visible items
   const visibleItems = useMemo(() => getVisibleItems(), [getVisibleItems]);
@@ -143,7 +163,7 @@ const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0, onSwipeEnd 
         velocity: event.velocityX,
       });
 
-      // FIXED: We must use runOnJS to update React state from the worklet
+      // We must use runOnJS to update React state from the worklet
       runOnJS(updateIndex)(newIndex);
     });
 
@@ -156,16 +176,18 @@ const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0, onSwipeEnd 
     <View className="flex-1">
       <GestureDetector gesture={panGesture}>
         <Animated.View className="flex-1 flex-row" style={animatedStyle}>
-          {visibleItems.map(({ index, content }) => (
+          {visibleItems.map(({ index, item }) => (
             <View
-              key={index}
+              key={item.id ?? index}
               className="w-screen items-center justify-center"
               style={{
                 width: SCREEN_WIDTH,
                 position: 'absolute',
                 left: index * SCREEN_WIDTH,
               }}>
-              <View className="h-full w-full">{content}</View>
+              <View className="h-full w-full">
+                {renderItem({ item, index })}
+              </View>
             </View>
           ))}
         </Animated.View>
@@ -173,7 +195,7 @@ const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0, onSwipeEnd 
 
       {/* Pagination indicators */}
       <View className="absolute top-10 w-full flex-row items-center justify-center">
-        {items.map((_, index) => (
+        {initialItems.map((_, index) => (
           <View
             key={index}
             className={`mx-1 h-2 w-2 rounded-full ${
@@ -183,10 +205,10 @@ const Swiper: React.FC<SwiperProps> = ({ children, initialIndex = 0, onSwipeEnd 
         ))}
       </View>
 
-      {/* Debug panel */}
-      <DebugLog log={visibleItems} currentIndex={currentIndex} />
+      {/* Debug panel - only shown if requested */}
+      {showDebugPanel && <DebugLog log={visibleItems} currentIndex={currentIndex} />}
     </View>
   );
-};
+}
 
 export default Swiper;
