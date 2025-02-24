@@ -28,7 +28,11 @@ export default function HandlerGestureExample1Screen() {
         />
         <Button
           onPress={() => router.push('/handler-gesture/4.8-swiper-previous')}
-          title="infinitive swiper + previous items"
+          title="infinitive swiper + previous items 4.8"
+        />
+        <Button
+          onPress={() => router.push('/handler-gesture/4.9-swiper-previousMigocze')}
+          title="infinitive swiper + previous items + migocze 4.9"
         />
         <Button
           onPress={() => router.push('/handler-gesture/5-infinitive-fetch')}
