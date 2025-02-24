@@ -11,7 +11,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 // Define our screen dimensions and thresholds
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
-const VISIBLE_ITEMS_THRESHOLD = 2;
+const VISIBLE_ITEMS_THRESHOLD = 7;
 const FETCH_THRESHOLD = 4; // How many items from the edge to trigger fetch
 
 export type SwipeDirection = 'next' | 'previous';

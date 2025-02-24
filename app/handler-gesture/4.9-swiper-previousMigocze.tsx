@@ -229,7 +229,7 @@ const SwiperImplementation: React.FC = () => {
           renderItem={renderCalendarItem}
           initialIndex={initialIndex}
           onSwipeEnd={handleSwipeEnd}
-          fetchThreshold={3} // Start fetching when 3 items from either edge
+          fetchThreshold={6} // Start fetching when 3 items from either edge
           showDebugPanel={true}
         />
 
