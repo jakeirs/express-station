@@ -102,6 +102,7 @@ const SwiperImplementation = () => {
         <View className="rounded-full bg-black/20 px-3 py-1">
           <Text className="text-xs text-white">Index: {item.index}</Text>
         </View>
+        
         <View className="rounded-full bg-white/20 px-3 py-1">
           <Text className="text-xs text-white">{item.badge}</Text>
         </View>
