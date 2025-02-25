@@ -257,10 +257,10 @@ function Swiper<T extends ItemData>({
 
       // Animate to the new position
       translateX.value = withSpring(-newIndex * SCREEN_WIDTH, {
-        damping: 20,
-        stiffness: 100,
-        mass: 0.5,
-        velocity: event.velocityX,
+        damping: 50,
+        stiffness: 300,
+        mass: 2,
+        velocity: event.velocityX - 200,
       });
 
       // We must use runOnJS to update React state from the worklet
