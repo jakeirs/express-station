@@ -1,18 +1,19 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { View, Dimensions, ScrollView, Text } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   runOnJS,
+  useAnimatedReaction,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 // Define our screen dimensions and thresholds
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
-const VISIBLE_ITEMS_THRESHOLD = 7;
-const FETCH_THRESHOLD = 4; // How many items from the edge to trigger fetch
+const VISIBLE_ITEMS_THRESHOLD = 1;
+const FETCH_THRESHOLD = 6; // How many items from the edge to trigger fetch
 
 export type SwipeDirection = 'next' | 'previous';
 
@@ -55,6 +56,7 @@ interface DebugLogProps<T extends ItemData> {
   currentIndex: number;
   totalItems: number;
   prependedItems: number;
+  gestureActive: boolean;
 }
 
 // Debug component to visualize what's happening
@@ -63,6 +65,7 @@ function DebugLog<T extends ItemData>({
   currentIndex,
   totalItems,
   prependedItems,
+  gestureActive,
 }: DebugLogProps<T>) {
   const visibleItemsIds = log.map((item) => item.index);
   const distanceToStart = currentIndex;
@@ -86,6 +89,9 @@ function DebugLog<T extends ItemData>({
       <Text className="text-xs text-orange-400">Visible Items Count: {log.length}</Text>
       <Text className="text-xs text-blue-400">Total Items: {totalItems}</Text>
       <Text className="text-xs text-yellow-400">
+        Gesture Active: {gestureActive ? 'Yes' : 'No'}
+      </Text>
+      <Text className="text-xs text-yellow-400">
         Distance to Start: {distanceToStart} | Distance to End: {distanceToEnd}
       </Text>
     </ScrollView>
@@ -101,42 +107,17 @@ function Swiper<T extends ItemData>({
   fetchThreshold = FETCH_THRESHOLD,
   showDebugPanel = false,
 }: SwiperProps<T>) {
-  // Track how many items have been prepended to handle index adjustments
-  const prependedItemsRef = useRef<number>(0);
+  // Track how many items have been prepended
   const [prependedItems, setPrependedItems] = useState(0);
 
   // Use state for items to properly handle updates
   const [items, setItems] = useState<T[]>(initialItems);
 
-  // Track the previous items length to detect prepended items
-  const prevItemsLengthRef = useRef<number>(initialItems.length);
+  // Track the previous items for comparison
+  const prevItemsRef = useRef<T[]>(initialItems);
 
-  // Update items when initialItems changes, with special handling for prepended items
-  useEffect(() => {
-    // If new items array is longer than the previous one
-    if (initialItems.length > prevItemsLengthRef.current) {
-      // Calculate how many items were added
-      const addedItems = initialItems.length - prevItemsLengthRef.current;
-
-      // Check if items were prepended by comparing first few IDs
-      // This is a heuristic - you may need a more robust method depending on your data
-      const itemsWerePrepended = addedItems > 0 && initialItems[addedItems].id === items[0]?.id;
-
-      if (itemsWerePrepended) {
-        // Update our prepended items counter
-        const newPrependedCount = prependedItemsRef.current + addedItems;
-        prependedItemsRef.current = newPrependedCount;
-        setPrependedItems(newPrependedCount);
-
-        // Adjust current index by the number of prepended items
-        setCurrentIndex((prevIndex) => prevIndex + addedItems);
-      }
-    }
-
-    // Update our items and record the new length
-    setItems(initialItems);
-    prevItemsLengthRef.current = initialItems.length;
-  }, [initialItems, items]);
+  // We'll use this to track if the gesture is active for UI
+  const [isGestureActiveState, setIsGestureActiveState] = useState(false);
 
   const itemCount = items.length;
 
@@ -145,20 +126,77 @@ function Swiper<T extends ItemData>({
     initialIndex >= 0 && initialIndex < itemCount ? initialIndex : 0
   );
 
-  // Animation values
+  // Animation and gesture state using shared values for performance
   const translateX = useSharedValue<number>(-currentIndex * SCREEN_WIDTH);
   const isGestureActive = useSharedValue<boolean>(false);
+  const isUpdatingItems = useSharedValue<boolean>(false);
+  const targetIndex = useSharedValue<number>(currentIndex);
 
-  // Handle translateX adjustment when new items are added or current index changes
-  // Only adjust translateX when the itemCount changes (new items added)
-  useEffect(() => {
-    // Don't update if we're in the middle of a gesture
-    if (!isGestureActive.value) {
-      translateX.value = -currentIndex * SCREEN_WIDTH;
+  // This will update the React state from the worklet environment
+  const syncCurrentIndex = useCallback((index: number) => {
+    setCurrentIndex(index);
+  }, []);
+
+  // Use animated reaction to handle changes to targetIndex
+  useAnimatedReaction(
+    () => targetIndex.value,
+    (current, previous) => {
+      if (current !== previous && previous !== null) {
+        runOnJS(syncCurrentIndex)(current);
+      }
     }
-  }, [itemCount, translateX]);
+  );
 
-  // Check fetch conditions and enhance onSwipeEnd with additional information
+  // Update items when initialItems changes, with special handling for prepended items
+  React.useEffect(() => {
+    // Skip if identical or during active gesture
+    if (initialItems === prevItemsRef.current || isGestureActive.value) {
+      return;
+    }
+
+    // Mark that we're updating items
+    isUpdatingItems.value = true;
+
+    const prevItems = prevItemsRef.current;
+    const newItems = initialItems;
+
+    // Check if items were prepended by comparing first item of previous array
+    if (prevItems.length > 0 && newItems.length > prevItems.length) {
+      // Find the first item from the old array in the new array
+      const firstPrevItem = prevItems[0];
+      let foundIndex = -1;
+
+      for (let i = 0; i < newItems.length; i++) {
+        if (newItems[i].id === firstPrevItem.id) {
+          foundIndex = i;
+          break;
+        }
+      }
+
+      // If found at a position other than 0, items were prepended
+      if (foundIndex > 0) {
+        const newPrependCount = foundIndex;
+        setPrependedItems((prev) => prev + newPrependCount);
+
+        // Update the current index and directly set translateX
+        const newIndex = currentIndex + newPrependCount;
+        setCurrentIndex(newIndex);
+        targetIndex.value = newIndex;
+        translateX.value = -newIndex * SCREEN_WIDTH;
+      }
+    }
+
+    // Update items and reference
+    setItems(newItems);
+    prevItemsRef.current = newItems;
+
+    // Clear the updating flag after a short delay to allow rendering
+    setTimeout(() => {
+      isUpdatingItems.value = false;
+    }, 50);
+  }, [initialItems, currentIndex]);
+
+  // Handle swipe end and check if we should fetch more data
   const handleSwipeEnd = useCallback(
     (direction: SwipeDirection, index: number) => {
       if (!onSwipeEnd) return;
@@ -181,10 +219,10 @@ function Swiper<T extends ItemData>({
     [itemCount, fetchThreshold, onSwipeEnd]
   );
 
-  // Update the current index - this function will be called through runOnJS
+  // Update the current index and check if we need to fetch more data
   const updateIndex = useCallback(
     (newIndex: number, direction?: SwipeDirection) => {
-      setCurrentIndex(newIndex);
+      targetIndex.value = newIndex;
 
       // If direction is provided, check if we need to fetch more data
       if (direction) {
@@ -198,15 +236,18 @@ function Swiper<T extends ItemData>({
   const getVisibleItems = useCallback((): VisibleItem<T>[] => {
     const visibleItems: VisibleItem<T>[] = [];
 
-    // We optimize by only rendering items that could be visible
+    // Only render items that could be visible
     const startIdx = Math.max(0, currentIndex - VISIBLE_ITEMS_THRESHOLD);
     const endIdx = Math.min(itemCount - 1, currentIndex + VISIBLE_ITEMS_THRESHOLD);
 
     for (let i = startIdx; i <= endIdx; i++) {
-      visibleItems.push({
-        index: i,
-        item: items[i],
-      });
+      if (items[i]) {
+        // Safety check for index bounds
+        visibleItems.push({
+          index: i,
+          item: items[i],
+        });
+      }
     }
 
     return visibleItems;
@@ -215,57 +256,78 @@ function Swiper<T extends ItemData>({
   // Get currently visible items
   const visibleItems = useMemo(() => getVisibleItems(), [getVisibleItems]);
 
-  // Pan gesture handler
+  // Pan gesture handler with improved handling of active gestures
   const panGesture = Gesture.Pan()
+    .enabled(!isUpdatingItems.value) // Disable during item updates
     .onStart(() => {
       isGestureActive.value = true;
+      runOnJS(setIsGestureActiveState)(true);
     })
     .onUpdate((event) => {
-      // Calculate tentative new position
-      const newPosition = -currentIndex * SCREEN_WIDTH + event.translationX;
+      if (isUpdatingItems.value) {
+        return; // Skip updates if items are being updated
+      }
 
-      // Boundary constraints to prevent scrolling beyond the first or last item
+      // Calculate tentative new position
+      const newPosition = -targetIndex.value * SCREEN_WIDTH + event.translationX;
+
+      // Boundary constraints
       const minTranslate = -(itemCount - 1) * SCREEN_WIDTH;
       translateX.value = Math.max(minTranslate, Math.min(0, newPosition));
     })
     .onEnd((event) => {
-      isGestureActive.value = false;
+      if (isUpdatingItems.value) {
+        isGestureActive.value = false;
+        runOnJS(setIsGestureActiveState)(false);
+        return; // Skip if items are being updated
+      }
 
       const velocityThreshold = Math.abs(event.velocityX) > 500;
       const distanceThreshold = Math.abs(event.translationX) > SWIPE_THRESHOLD;
 
-      let newIndex = currentIndex;
+      let newIndex = targetIndex.value;
       let direction: SwipeDirection | undefined;
 
       if (velocityThreshold || distanceThreshold) {
         if (event.velocityX > 0 || event.translationX > 0) {
-          // Move backward but with boundary check
-          newIndex = Math.max(0, currentIndex - 1);
+          // Move backward with boundary check
+          newIndex = Math.max(0, targetIndex.value - 1);
 
-          if (currentIndex !== newIndex) {
+          if (targetIndex.value !== newIndex) {
             direction = 'previous';
           }
         } else {
-          // Move forward but with boundary check
-          newIndex = Math.min(itemCount - 1, currentIndex + 1);
+          // Move forward with boundary check
+          newIndex = Math.min(itemCount - 1, targetIndex.value + 1);
 
-          if (currentIndex !== newIndex) {
+          if (targetIndex.value !== newIndex) {
             direction = 'next';
           }
         }
       }
 
-      // Animate to the new position
+      // Animate to new position with natural spring physics
       translateX.value = withSpring(-newIndex * SCREEN_WIDTH, {
-        damping: 50,
-        stiffness: 300,
-        mass: 2,
-        velocity: event.velocityX - 200,
+        damping: 20,
+        stiffness: 100,
+        mass: 0.5,
+        velocity: event.velocityX,
+        restSpeedThreshold: 0.5,
       });
 
-      // We must use runOnJS to update React state from the worklet
-      // Pass the direction if we actually moved
-      runOnJS(updateIndex)(newIndex, direction);
+      // Mark gesture as inactive
+      isGestureActive.value = false;
+      runOnJS(setIsGestureActiveState)(false);
+
+      // Only update the index if it changed
+      if (newIndex !== targetIndex.value) {
+        runOnJS(updateIndex)(newIndex, direction);
+      }
+    })
+    .onFinalize(() => {
+      // Ensure gesture is marked as inactive even if something interrupts it
+      isGestureActive.value = false;
+      runOnJS(setIsGestureActiveState)(false);
     });
 
   // Animated style for smooth transitions
@@ -294,14 +356,15 @@ function Swiper<T extends ItemData>({
 
       {/* Pagination indicators */}
       <View className="absolute top-10 w-full flex-row items-center justify-center">
-        {items.map((_, index) => (
-          <View
-            key={index}
-            className={`mx-1 h-2 w-2 rounded-full ${
-              currentIndex === index ? 'scale-110 bg-white' : 'bg-white/50'
-            }`}
-          />
-        ))}
+        {items.length > 0 &&
+          items.map((_, index) => (
+            <View
+              key={index}
+              className={`mx-1 h-2 w-2 rounded-full ${
+                currentIndex === index ? 'scale-110 bg-white' : 'bg-white/50'
+              }`}
+            />
+          ))}
       </View>
 
       {/* Debug panel - only shown if requested */}
@@ -311,6 +374,7 @@ function Swiper<T extends ItemData>({
           currentIndex={currentIndex}
           totalItems={itemCount}
           prependedItems={prependedItems}
+          gestureActive={isGestureActiveState}
         />
       )}
     </View>
