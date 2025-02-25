@@ -48,10 +48,11 @@ interface DebugLogProps {
   currentIndex: number;
   itemCount: number;
   isUpdating: boolean;
+  isUpdatingState: boolean;
 }
 
 // Debug component
-function DebugLog({ currentIndex, itemCount, isUpdating }: DebugLogProps) {
+function DebugLog({ currentIndex, itemCount, isUpdating, isUpdatingState }: DebugLogProps) {
   return (
     <ScrollView
       className="absolute bottom-0 left-0 right-0 h-32 bg-black/80"
@@ -59,6 +60,9 @@ function DebugLog({ currentIndex, itemCount, isUpdating }: DebugLogProps) {
       <Text className="text-xs text-white">Current Index: {currentIndex}</Text>
       <Text className="text-xs text-white">Total Items: {itemCount}</Text>
       <Text className="text-xs text-white">Is Updating: {isUpdating ? 'Yes' : 'No'}</Text>
+      <Text className="text-xs text-white">
+        Is isUpdatingState: {isUpdatingState ? 'Yes' : 'No'}
+      </Text>
       <Text className="text-xs text-white">Distance to Start: {currentIndex}</Text>
       <Text className="text-xs text-white">Distance to End: {itemCount - currentIndex - 1}</Text>
     </ScrollView>
@@ -84,6 +88,9 @@ function Swiper<T extends ItemData>({
   // This ensures it's immediately available on both JS and UI threads
   const isUpdating = useSharedValue(false);
 
+  // For tracking in the UI (debug panel)
+  const [isUpdatingState, setIsUpdatingState] = useState(false);
+
   // Animation value for position
   const translateX = useSharedValue(-currentIndex * SCREEN_WIDTH);
 
@@ -95,8 +102,9 @@ function Swiper<T extends ItemData>({
   const setUpdating = useCallback(
     (value: boolean) => {
       isUpdating.value = value;
+      setIsUpdatingState(value);
     },
-    [isUpdating.value]
+    [isUpdating]
   );
 
   // Handle updates to items - this is crucial for prepended items
@@ -141,7 +149,7 @@ function Swiper<T extends ItemData>({
     // Clear updating flag after a short delay to let rendering complete
     setTimeout(() => {
       setUpdating(false);
-    }, 0);
+    }, 100);
   }, [initialItems, currentIndex, translateX, setUpdating]);
 
   // Apply updates when items change
@@ -188,7 +196,7 @@ function Swiper<T extends ItemData>({
         });
       }
     },
-    [items.length, onSwipeEnd, fetchThreshold, isUpdating.value]
+    [items.length, onSwipeEnd, fetchThreshold, isUpdating]
   );
 
   // Basic pan gesture for swiping - disabled during updates
@@ -285,7 +293,8 @@ function Swiper<T extends ItemData>({
         <DebugLog
           currentIndex={currentIndex}
           itemCount={items.length}
-          isUpdating={isUpdating.value}
+          isUpdatingState={isUpdatingState}
+          isUpdatingValue={isUpdatingState}
         />
       )}
     </View>
