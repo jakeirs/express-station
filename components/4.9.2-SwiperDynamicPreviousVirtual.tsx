@@ -12,7 +12,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 const VISIBLE_ITEMS_THRESHOLD = 2;
-const FETCH_THRESHOLD = 6;
+const FETCH_THRESHOLD = 4;
 
 export type SwipeDirection = 'next' | 'previous';
 
@@ -47,16 +47,22 @@ interface SwiperProps<T extends ItemData> {
 interface DebugLogProps {
   currentIndex: number;
   itemCount: number;
+  isUpdating: boolean;
+  isUpdatingState: boolean;
 }
 
 // Debug component
-function DebugLog({ currentIndex, itemCount }: DebugLogProps) {
+function DebugLog({ currentIndex, itemCount, isUpdating, isUpdatingState }: DebugLogProps) {
   return (
     <ScrollView
       className="absolute bottom-0 left-0 right-0 h-32 bg-black/80"
       contentContainerClassName="p-2">
       <Text className="text-xs text-white">Current Index: {currentIndex}</Text>
       <Text className="text-xs text-white">Total Items: {itemCount}</Text>
+      <Text className="text-xs text-white">Is Updating: {isUpdating ? 'Yes' : 'No'}</Text>
+      <Text className="text-xs text-white">
+        Is isUpdatingState: {isUpdatingState ? 'Yes' : 'No'}
+      </Text>
       <Text className="text-xs text-white">Distance to Start: {currentIndex}</Text>
       <Text className="text-xs text-white">Distance to End: {itemCount - currentIndex - 1}</Text>
     </ScrollView>
@@ -78,12 +84,28 @@ function Swiper<T extends ItemData>({
   // Keep track of the current index
   const [currentIndex, setCurrentIndex] = useState(Math.min(initialIndex, initialItems.length - 1));
 
+  // Flag to track if we're currently updating items - using shared value
+  // This ensures it's immediately available on both JS and UI threads
+  const isUpdating = useSharedValue(false);
+
+  // For tracking in the UI (debug panel)
+  const [isUpdatingState, setIsUpdatingState] = useState(false);
+
   // Animation value for position
   const translateX = useSharedValue(-currentIndex * SCREEN_WIDTH);
 
   // Reference to previous props for comparison
   const prevItemsRef = useRef(initialItems);
   const prevItemsFirstIdRef = useRef(initialItems.length > 0 ? initialItems[0].id : null);
+
+  // Function to synchronize isUpdating between threads
+  const setUpdating = useCallback(
+    (value: boolean) => {
+      isUpdating.value = value;
+      setIsUpdatingState(value);
+    },
+    [isUpdating]
+  );
 
   // Handle updates to items - this is crucial for prepended items
   const updateItems = useCallback(() => {
@@ -92,19 +114,25 @@ function Swiper<T extends ItemData>({
       return;
     }
 
+    // Set updating flag to disable gestures - immediately available on UI thread
+    setUpdating(true);
+
     // Handle the case when new items are prepended
     if (prevItemsFirstIdRef.current !== null && initialItems.length > prevItemsRef.current.length) {
       // Find where the first item of the previous array is in the new array
       let prependedCount = 0;
+      let foundFirstItem = false;
+
       for (let i = 0; i < initialItems.length; i++) {
         if (initialItems[i].id === prevItemsFirstIdRef.current) {
           prependedCount = i;
+          foundFirstItem = true;
           break;
         }
       }
 
       // If items were prepended, adjust the current index
-      if (prependedCount > 0) {
+      if (foundFirstItem && prependedCount > 0) {
         const newIndex = currentIndex + prependedCount;
         setCurrentIndex(newIndex);
 
@@ -117,7 +145,12 @@ function Swiper<T extends ItemData>({
     setItems(initialItems);
     prevItemsRef.current = initialItems;
     prevItemsFirstIdRef.current = initialItems.length > 0 ? initialItems[0].id : null;
-  }, [initialItems, currentIndex, translateX]);
+
+    // Clear updating flag after a short delay to let rendering complete
+    setTimeout(() => {
+      setUpdating(false);
+    }, 100);
+  }, [initialItems, currentIndex, translateX, setUpdating]);
 
   // Apply updates when items change
   useMemo(() => {
@@ -145,6 +178,9 @@ function Swiper<T extends ItemData>({
   // Handle updating index and checking for fetch
   const handleIndexChange = useCallback(
     (newIndex: number, direction?: SwipeDirection) => {
+      // Don't update if currently updating items
+      if (isUpdating.value) return;
+
       setCurrentIndex(newIndex);
 
       if (direction && onSwipeEnd) {
@@ -160,16 +196,23 @@ function Swiper<T extends ItemData>({
         });
       }
     },
-    [items.length, onSwipeEnd, fetchThreshold]
+    [items.length, onSwipeEnd, fetchThreshold, isUpdating]
   );
 
-  // Basic pan gesture for swiping
+  // Basic pan gesture for swiping - disabled during updates
   const panGesture = Gesture.Pan()
+    .enabled(!isUpdating.value) // Using shared value for immediate checking on UI thread
     .onUpdate((event) => {
+      // Skip if updating - this check happens directly on the UI thread
+      if (isUpdating.value) return;
+
       // Simple translation based on drag
       translateX.value = -currentIndex * SCREEN_WIDTH + event.translationX;
     })
     .onEnd((event) => {
+      // Skip if updating - this check happens directly on the UI thread
+      if (isUpdating.value) return;
+
       // Determine if we should change slides
       const velocityThreshold = Math.abs(event.velocityX) > 500;
       const distanceThreshold = Math.abs(event.translationX) > SWIPE_THRESHOLD;
@@ -201,7 +244,7 @@ function Swiper<T extends ItemData>({
         velocity: event.velocityX,
       });
 
-      // Update the index if changed
+      // Update the index if changed - must use runOnJS to call back to JS thread
       if (newIndex !== currentIndex) {
         runOnJS(handleIndexChange)(newIndex, direction);
       }
@@ -211,6 +254,8 @@ function Swiper<T extends ItemData>({
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
   }));
+
+  console.log('isUpdating.value', isUpdating.value);
 
   return (
     <View className="flex-1">
@@ -244,7 +289,14 @@ function Swiper<T extends ItemData>({
       </View>
 
       {/* Debug panel */}
-      {showDebugPanel && <DebugLog currentIndex={currentIndex} itemCount={items.length} />}
+      {showDebugPanel && (
+        <DebugLog
+          currentIndex={currentIndex}
+          itemCount={items.length}
+          isUpdatingState={isUpdatingState}
+          isUpdatingValue={isUpdatingState}
+        />
+      )}
     </View>
   );
 }
