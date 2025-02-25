@@ -12,7 +12,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
 const VISIBLE_ITEMS_THRESHOLD = 2;
-const FETCH_THRESHOLD = 4;
+const FETCH_THRESHOLD = 6;
 
 export type SwipeDirection = 'next' | 'previous';
 
@@ -52,12 +52,14 @@ interface DebugLogProps {
 // Debug component
 function DebugLog({ currentIndex, itemCount }: DebugLogProps) {
   return (
-    <View className="absolute bottom-0 left-0 right-0 h-20 bg-black/80 p-2">
+    <ScrollView
+      className="absolute bottom-0 left-0 right-0 h-32 bg-black/80"
+      contentContainerClassName="p-2">
       <Text className="text-xs text-white">Current Index: {currentIndex}</Text>
       <Text className="text-xs text-white">Total Items: {itemCount}</Text>
       <Text className="text-xs text-white">Distance to Start: {currentIndex}</Text>
       <Text className="text-xs text-white">Distance to End: {itemCount - currentIndex - 1}</Text>
-    </View>
+    </ScrollView>
   );
 }
 
