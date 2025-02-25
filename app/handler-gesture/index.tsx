@@ -12,19 +12,19 @@ export default function HandlerGestureExample1Screen() {
         <Button onPress={() => router.push('/handler-gesture/3-example')} title="Example 3" />
         <Button
           onPress={() => router.push('/handler-gesture/4-infinitive-swiper')}
-          title="infinitive swiper"
+          title="infinitive swiper 4.0"
         />
         <Button
           onPress={() => router.push('/handler-gesture/4.5-infinitive-swiper-dynamic')}
-          title="infinitive swiper + dynamic"
+          title="infinitive swiper + dynamic 4.5"
         />
         <Button
           onPress={() => router.push('/handler-gesture/4.6-swiper-dynamic')}
-          title="infinitive swiper + init items"
+          title="infinitive swiper + init items 4.6"
         />
         <Button
           onPress={() => router.push('/handler-gesture/4.7-swiper-dynamic')}
-          title="infinitive swiper + add items"
+          title="infinitive swiper + add items 4.7"
         />
         <Button
           onPress={() => router.push('/handler-gesture/4.8-swiper-previous')}
@@ -37,6 +37,10 @@ export default function HandlerGestureExample1Screen() {
         <Button
           onPress={() => router.push('/handler-gesture/4.9.1-swiper-previousExp')}
           title="infinitive swiper + previous items + exp 4.9.1"
+        />
+        <Button
+          onPress={() => router.push('/handler-gesture/4.9.2-swiper-previousVirtual')}
+          title="infinitive swiper + previous items + virtual 4.9.2"
         />
         <Button
           onPress={() => router.push('/handler-gesture/5-infinitive-fetch')}
