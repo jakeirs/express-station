@@ -47,16 +47,28 @@ interface SwiperProps<T extends ItemData> {
 interface DebugLogProps {
   currentIndex: number;
   itemCount: number;
+  translateX: number;
   isUpdating: boolean;
+  visibleItemsLength: number;
 }
 
 // Debug component
-function DebugLog({ currentIndex, itemCount, isUpdating }: DebugLogProps) {
+function DebugLog({
+  currentIndex,
+  itemCount,
+  isUpdating,
+  visibleItemsLength,
+  translateX,
+}: DebugLogProps) {
   return (
     <ScrollView
       className="absolute bottom-0 left-0 right-0 h-32 bg-black/80"
       contentContainerClassName="p-2">
       <Text className="text-xs text-white">Current Index: {currentIndex}</Text>
+      <Text className="text-xs text-white">translateX: {translateX}</Text>
+      <Text className="text-xs text-white">
+        visible Items: {JSON.stringify(visibleItemsLength)}
+      </Text>
       <Text className="text-xs text-white">Total Items: {itemCount}</Text>
       <Text className="text-xs text-white">Is Updating: {isUpdating ? 'Yes' : 'No'}</Text>
       <Text className="text-xs text-white">Distance to Start: {currentIndex}</Text>
@@ -247,8 +259,6 @@ function Swiper<T extends ItemData>({
     transform: [{ translateX: translateX.value }],
   }));
 
-  console.log('isUpdating.value', isUpdating.value);
-
   return (
     <View className="flex-1">
       <GestureDetector gesture={panGesture}>
@@ -286,6 +296,8 @@ function Swiper<T extends ItemData>({
           currentIndex={currentIndex}
           itemCount={items.length}
           isUpdating={isUpdating.value}
+          visibleItemsLength={visibleItems.length}
+          translateX={translateX.value}
         />
       )}
     </View>

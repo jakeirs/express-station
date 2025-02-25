@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, ActivityIndicator, SafeAreaView } from 'react-native';
-import Swiper, { SwipeDirection, ItemData } from '~/components/4.9.3-SwiperDynamicEndStopping'; // Import the Swiper component you've already created
+import Swiper, { SwipeDirection, ItemData } from '~/components/4.9.3-SwiperDynamicEndCurrentIndexUpdate'; // Import the Swiper component you've already created
 
 // Define our item structure with TypeScript
 interface CalendarItem extends ItemData {
