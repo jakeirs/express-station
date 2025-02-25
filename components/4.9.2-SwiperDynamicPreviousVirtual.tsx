@@ -48,6 +48,7 @@ interface DebugLogProps {
   currentIndex: number;
   itemCount: number;
   translateX: number;
+  itemsLength: number;
   isUpdating: boolean;
   visibleItemsLength: number;
 }
@@ -58,6 +59,7 @@ function DebugLog({
   itemCount,
   isUpdating,
   visibleItemsLength,
+  itemsLength,
   translateX,
 }: DebugLogProps) {
   return (
@@ -69,6 +71,7 @@ function DebugLog({
       <Text className="text-xs text-white">
         visible Items: {JSON.stringify(visibleItemsLength)}
       </Text>
+      <Text className="text-xs text-white">itemsLength : {itemsLength}</Text>
       <Text className="text-xs text-white">Total Items: {itemCount}</Text>
       <Text className="text-xs text-white">Is Updating: {isUpdating ? 'Yes' : 'No'}</Text>
       <Text className="text-xs text-white">Distance to Start: {currentIndex}</Text>
@@ -297,6 +300,7 @@ function Swiper<T extends ItemData>({
           itemCount={items.length}
           isUpdating={isUpdating.value}
           visibleItemsLength={visibleItems.length}
+          itemsLength={items.length}
           translateX={translateX.value}
         />
       )}
