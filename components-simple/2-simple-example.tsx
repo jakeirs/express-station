@@ -18,7 +18,7 @@ const FETCH_THRESHOLD = 4;
 
 // Animation configuration with proper easing
 const TIMING_CONFIG = {
-  duration: 300, // 2 seconds animation
+  duration: 100, // 2 seconds animation
   easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Standard easing curve
 };
 
@@ -76,7 +76,7 @@ function SwiperMan<T extends ItemData>({
   React.useEffect(() => {
     // Skip if no items
     if (initialItems.length === 0) return;
-
+    isAnimating.value = true;
     // Need to cancel any ongoing animations before making changes
     cancelAnimation(translateX);
 
@@ -90,6 +90,10 @@ function SwiperMan<T extends ItemData>({
 
     // Update items
     setItems(initialItems);
+
+    setTimeout(() => {
+      isAnimating.value = false;
+    }, 200);
   }, [initialItems]);
 
   // Get visible items for efficient rendering
@@ -138,14 +142,6 @@ function SwiperMan<T extends ItemData>({
     [items.length, onSwipeEnd, fetchThreshold]
   );
 
-  // Helper function to set isAnimating safely
-  const setIsAnimating = useCallback(
-    (value: boolean) => {
-      isAnimating.value = value;
-    },
-    [isAnimating]
-  );
-
   // Pan gesture handler
   const panGesture = Gesture.Pan()
     .enabled(!isAnimating.value) // Disable during animations
@@ -185,7 +181,6 @@ function SwiperMan<T extends ItemData>({
       }
 
       // Set flag to prevent new gestures during animation
-      isAnimating.value = true;
 
       // Target position for the new index
       const position = -newIndex * SCREEN_WIDTH;
@@ -197,7 +192,6 @@ function SwiperMan<T extends ItemData>({
           runOnJS(handleIndexChange)(newIndex, direction);
 
           // Clear animating flag - must use runOnJS
-          isAnimating.value = false;
         }
       });
     });

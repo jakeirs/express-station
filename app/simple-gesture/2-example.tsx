@@ -1,6 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, ActivityIndicator, SafeAreaView } from 'react-native';
-import SwiperMan, { type ItemData, type SwipeDirection } from '~/components-simple/1-simple-example';
+import SwiperMan, {
+  type ItemData,
+  type SwipeDirection,
+} from '~/components-simple/2-simple-example';
 
 // Define our item structure with TypeScript
 interface CalendarItem extends ItemData {
