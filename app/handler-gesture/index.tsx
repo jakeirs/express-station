@@ -44,11 +44,11 @@ export default function HandlerGestureExample1Screen() {
         />
         <Button
           onPress={() => router.push('/handler-gesture/4.9.2.1-fade-in')}
-          title="infinitive swiper + previous items + virtual 4.9.2.1"
+          title="fade in 4.9.2.1"
         />
         <Button
           onPress={() => router.push('/handler-gesture/4.9.3-swiper-previousEndStopping')}
-          title="infinitive swiper + previous items + virtual 4.9.3"
+          title="infinitive swiper + is prepended 4.9.3"
         />
         <Button
           onPress={() => router.push('/handler-gesture/5-infinitive-fetch')}
