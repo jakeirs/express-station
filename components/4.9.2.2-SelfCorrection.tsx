@@ -141,7 +141,7 @@ function Swiper<T extends ItemData>({
     // Check if current position might be out of bounds
     const expectedPosition = -currentIndex * SCREEN_WIDTH;
     const currentPosition = translateX.value;
-    const threshold = SCREEN_WIDTH * 0.5; // Half a screen tolerance
+    const threshold = SCREEN_WIDTH * 0.2; // Half a screen tolerance
 
     // If position is significantly off or if visibleItems is empty
     if (Math.abs(currentPosition - expectedPosition) > threshold) {
@@ -163,6 +163,7 @@ function Swiper<T extends ItemData>({
         overshootClamping: true,
       });
 
+      isUpdating.value = false;
       // Track corrections
       setSelfCorrections((prev) => prev + 1);
       return true;

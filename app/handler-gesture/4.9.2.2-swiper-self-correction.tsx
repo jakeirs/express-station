@@ -85,6 +85,9 @@ const SwiperImplementation: React.FC = () => {
     return generateCalendarItems(initialStartDate, 15);
   });
 
+  const calendarDates = calendarItems.map((i) => i.date);
+  console.log('calendarDates!!!!!!!!11', calendarDates);
+
   // Track loading states separately for previous and next
   const [isLoadingPrevious, setIsLoadingPrevious] = useState<boolean>(false);
   const [isLoadingNext, setIsLoadingNext] = useState<boolean>(false);
@@ -132,9 +135,13 @@ const SwiperImplementation: React.FC = () => {
         // Simulate API call delay
         setTimeout(() => {
           const newItems = generateCalendarItems(newStartDate, 10);
-          setCalendarItems((prev) => [...prev, ...newItems]);
+          // Filter out items that already exist in the current array
+          const uniqueNewItems = newItems.filter(
+            (newItem) => !calendarItems.some((existingItem) => existingItem.date === newItem.date)
+          );
+          setCalendarItems((prev) => [...prev, ...uniqueNewItems]);
           setIsLoadingNext(false);
-          console.log(`Added ${newItems.length} new future days`);
+          console.log(`Added ${uniqueNewItems.length} new unique future days`);
         }, 1500);
       } else if (direction === 'previous' && !isLoadingPrevious) {
         // Fetch past dates
@@ -162,11 +169,16 @@ const SwiperImplementation: React.FC = () => {
             newItems.map((i) => i.date)
           );
 
+          // Filter out items that already exist in the current array
+          const uniqueNewItems = newItems.filter(
+            (newItem) => !calendarItems.some((existingItem) => existingItem.date === newItem.date)
+          );
+
           // When adding items to the beginning, we need to update currentIndex
           // to keep the same day visible
-          setCalendarItems((prev) => [...newItems, ...prev]);
+          setCalendarItems((prev) => [...uniqueNewItems, ...prev]);
           setIsLoadingPrevious(false);
-          console.log(`Added ${newItems.length} new past days`);
+          console.log(`Added ${uniqueNewItems.length} new unique past days`);
         }, 1500);
       }
     },
@@ -217,6 +229,8 @@ const SwiperImplementation: React.FC = () => {
     ),
     []
   );
+
+// check if there is some duplicates in dates and consolog it --> there are still dupliates in dates
 
   return (
     <SafeAreaView className="flex-1">
