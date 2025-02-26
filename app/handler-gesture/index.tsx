@@ -48,7 +48,7 @@ export default function HandlerGestureExample1Screen() {
         />
         <Button
           onPress={() => router.push('/handler-gesture/4.9.2.2-swiper-self-correction')}
-          title="self - correction 4.9.2.2"
+          title="self - correction 4.9.2.2 CONFIGURATION 30 fetch size"
         />
         <Button
           onPress={() => router.push('/handler-gesture/4.9.3-swiper-previousEndStopping')}
