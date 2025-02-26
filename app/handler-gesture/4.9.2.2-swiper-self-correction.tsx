@@ -2,6 +2,12 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, ActivityIndicator, SafeAreaView } from 'react-native';
 import Swiper, { SwipeDirection, ItemData } from '~/components/4.9.2.2-SelfCorrection'; // Import the Swiper component you've already created
 
+// Constants for calendar configuration
+const FETCH_BATCH_SIZE = 30; // Number of days to fetch in each batch
+const INITIAL_DAYS = 15; // Initial number of days to generate
+const INITIAL_OFFSET = 7; // Number of days before today to start
+const API_SIMULATION_DELAY = 1500; // Milliseconds to simulate API delay
+
 // Define our item structure with TypeScript
 interface CalendarItem extends ItemData {
   id: string;
@@ -79,10 +85,10 @@ const SwiperImplementation: React.FC = () => {
 
   // State for our calendar items
   const [calendarItems, setCalendarItems] = useState<CalendarItem[]>(() => {
-    // Initially generate 15 days centered around today
+    // Initially generate days centered around today
     const initialStartDate = new Date(today);
-    initialStartDate.setDate(today.getDate() - 7); // Start 7 days before today
-    return generateCalendarItems(initialStartDate, 15);
+    initialStartDate.setDate(today.getDate() - INITIAL_OFFSET);
+    return generateCalendarItems(initialStartDate, INITIAL_DAYS);
   });
 
   const calendarDates = calendarItems.map((i) => i.date);
@@ -134,7 +140,7 @@ const SwiperImplementation: React.FC = () => {
 
         // Simulate API call delay
         setTimeout(() => {
-          const newItems = generateCalendarItems(newStartDate, 10);
+          const newItems = generateCalendarItems(newStartDate, FETCH_BATCH_SIZE);
           // Filter out items that already exist in the current array
           const uniqueNewItems = newItems.filter(
             (newItem) => !calendarItems.some((existingItem) => existingItem.date === newItem.date)
@@ -142,7 +148,7 @@ const SwiperImplementation: React.FC = () => {
           setCalendarItems((prev) => [...prev, ...uniqueNewItems]);
           setIsLoadingNext(false);
           console.log(`Added ${uniqueNewItems.length} new unique future days`);
-        }, 1500);
+        }, API_SIMULATION_DELAY);
       } else if (direction === 'previous' && !isLoadingPrevious) {
         // Fetch past dates
         setIsLoadingPrevious(true);
@@ -150,20 +156,14 @@ const SwiperImplementation: React.FC = () => {
         // Get the first date in our current array
         const firstItem = calendarItems[0];
         const firstDate = new Date(firstItem.date);
-        const newEndDate = new Date(firstDate);
-        newEndDate.setDate(newEndDate.getDate() - 1); // End with the day before our first item
+        const newStartDate = new Date(firstDate);
+        newStartDate.setDate(newStartDate.getDate() - FETCH_BATCH_SIZE); // Start FETCH_BATCH_SIZE days before our first item
 
-        // Calculate start date for the new batch (10 days before)
-        const newStartDate = new Date(newEndDate);
-        newStartDate.setDate(newEndDate.getDate() - 9); // 10 days total
-
-        console.log(
-          `Fetching previous days starting from ${formatDateString(newStartDate)} to ${formatDateString(newEndDate)}`
-        );
+        console.log(`Fetching previous days starting from ${formatDateString(newStartDate)}`);
 
         // Simulate API call delay
         setTimeout(() => {
-          const newItems = generateCalendarItems(newStartDate, 10);
+          const newItems = generateCalendarItems(newStartDate, FETCH_BATCH_SIZE);
           console.log(
             'newItems Prev',
             newItems.map((i) => i.date)
@@ -174,12 +174,14 @@ const SwiperImplementation: React.FC = () => {
             (newItem) => !calendarItems.some((existingItem) => existingItem.date === newItem.date)
           );
 
+          console.log('uniqueNewItems. LENDGTH', uniqueNewItems.length, newItems.length);
+
           // When adding items to the beginning, we need to update currentIndex
           // to keep the same day visible
           setCalendarItems((prev) => [...uniqueNewItems, ...prev]);
           setIsLoadingPrevious(false);
           console.log(`Added ${uniqueNewItems.length} new unique past days`);
-        }, 1500);
+        }, API_SIMULATION_DELAY);
       }
     },
     [calendarItems, isLoadingNext, isLoadingPrevious]
@@ -230,7 +232,7 @@ const SwiperImplementation: React.FC = () => {
     []
   );
 
-// check if there is some duplicates in dates and consolog it --> there are still dupliates in dates
+  // check if there is some duplicates in dates and consolog it --> there are still dupliates in dates
 
   return (
     <SafeAreaView className="flex-1">
