@@ -3,7 +3,7 @@ import { View, Text, ActivityIndicator, SafeAreaView } from 'react-native';
 import Swiper, { SwipeDirection, ItemData } from '~/components/4.9.2.2-SelfCorrection'; // Import the Swiper component you've already created
 
 // Constants for calendar configuration
-const FETCH_BATCH_SIZE = 30; // Number of days to fetch in each batch
+const FETCH_BATCH_SIZE = 10; // Number of days to fetch in each batch
 const INITIAL_DAYS = 15; // Initial number of days to generate
 const INITIAL_OFFSET = 7; // Number of days before today to start
 const API_SIMULATION_DELAY = 1500; // Milliseconds to simulate API delay
