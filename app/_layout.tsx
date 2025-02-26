@@ -1,6 +1,17 @@
 import '../global.css';
 
+import { LogBox } from 'react-native';
 import 'react-native-gesture-handler';
+
+// Ignore specific warnings
+LogBox.ignoreLogs([
+  "Warning: Encountered two children with the same key",
+  "Warning: Each child in a list should have a unique",
+  "Warning: Components need to set a variable during the initial render",
+  "CssInterop upgrade warning",
+  "(NOBRIDGE) LOG"
+]);
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 
