@@ -1,12 +1,13 @@
-import { Tabs } from 'expo-router';
+import { Link, Tabs } from 'expo-router';
+import { View, Text } from 'react-native';
+import { HeaderButton } from '~/components/HeaderButton';
 import { TabBarIcon } from '~/components/TabBarIcon';
-
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
         tabBarActiveTintColor: 'black',
       }}>
       <Tabs.Screen
@@ -14,6 +15,16 @@ export default function TabLayout() {
         options={{
           title: 'Tab One',
           tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          headerRight: () => (
+            <View>
+              <Text>asdasd</Text>
+            </View>
+          ),
+          // tabBarLabel: () => (
+          //   <View>
+          //     <Text>asdasd</Text>
+          //   </View>
+          // ),
         }}
       />
       <Tabs.Screen

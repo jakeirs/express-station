@@ -245,10 +245,11 @@ function Swiper<T extends ItemData>({
 
       // Animate to the final position
       translateX.value = withSpring(-newIndex * SCREEN_WIDTH, {
-        damping: 20,
-        stiffness: 100,
-        mass: 0.5,
+        damping: 40,
+        stiffness: 50,
+        mass: 0.2,
         velocity: event.velocityX,
+        overshootClamping: true,
       });
 
       // Update the index if changed - must use runOnJS to call back to JS thread
