@@ -4,7 +4,9 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
   runOnJS,
+  Easing,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
@@ -51,6 +53,7 @@ interface DebugLogProps {
   itemsLength: number;
   isUpdating: boolean;
   visibleItemsLength: number;
+  recentlyPrepended: boolean;
 }
 
 // Debug component
@@ -61,6 +64,7 @@ function DebugLog({
   visibleItemsLength,
   itemsLength,
   translateX,
+  recentlyPrepended,
 }: DebugLogProps) {
   return (
     <ScrollView
@@ -71,16 +75,19 @@ function DebugLog({
       <Text className="text-xs text-white">
         visible Items: {JSON.stringify(visibleItemsLength)}
       </Text>
-      <Text className="text-xs text-white">itemsLength : {itemsLength}</Text>
+      <Text className="text-xs text-white">itemsLength: {itemsLength}</Text>
       <Text className="text-xs text-white">Total Items: {itemCount}</Text>
       <Text className="text-xs text-white">Is Updating: {isUpdating ? 'Yes' : 'No'}</Text>
+      <Text className="text-xs text-white">
+        Recently Prepended: {recentlyPrepended ? 'Yes' : 'No'}
+      </Text>
       <Text className="text-xs text-white">Distance to Start: {currentIndex}</Text>
       <Text className="text-xs text-white">Distance to End: {itemCount - currentIndex - 1}</Text>
     </ScrollView>
   );
 }
 
-// Simple and stable swiper that handles prepended items
+// Swiper component with fade-in animation for prepended items
 function Swiper<T extends ItemData>({
   initialItems,
   renderItem,
@@ -95,8 +102,14 @@ function Swiper<T extends ItemData>({
   // Keep track of the current index
   const [currentIndex, setCurrentIndex] = useState(Math.min(initialIndex, initialItems.length - 1));
 
+  // Track recently prepended items for animations
+  const [recentlyPrepended, setRecentlyPrepended] = useState(false);
+  const prependedItemCount = useSharedValue(0);
+
+  // Animation values for fade-in effect
+  const fadeOpacity = useSharedValue(1);
+
   // Flag to track if we're currently updating items - using shared value
-  // This ensures it's immediately available on both JS and UI threads
   const isUpdating = useSharedValue(false);
 
   // Animation value for position
@@ -111,7 +124,7 @@ function Swiper<T extends ItemData>({
     (value: boolean) => {
       isUpdating.value = value;
     },
-    [isUpdating.value]
+    [isUpdating]
   );
 
   // Handle updates to items - this is crucial for prepended items
@@ -123,6 +136,11 @@ function Swiper<T extends ItemData>({
 
     // Set updating flag to disable gestures - immediately available on UI thread
     setUpdating(true);
+
+    // Reset fade animation state
+    fadeOpacity.value = 1;
+    setRecentlyPrepended(false);
+    prependedItemCount.value = 0;
 
     // Handle the case when new items are prepended
     if (prevItemsFirstIdRef.current !== null && initialItems.length > prevItemsRef.current.length) {
@@ -138,13 +156,26 @@ function Swiper<T extends ItemData>({
         }
       }
 
-      // If items were prepended, adjust the current index
+      // If items were prepended, adjust the current index and set up animation
       if (foundFirstItem && prependedCount > 0) {
+        // Start with opacity at 0 for fade-in effect
+        fadeOpacity.value = 0;
+
+        // Track that we've prepended items for animation
+        setRecentlyPrepended(true);
+        prependedItemCount.value = prependedCount;
+
         const newIndex = currentIndex + prependedCount;
         setCurrentIndex(newIndex);
 
         // Directly update animation value to prevent visual jump
         translateX.value = -newIndex * SCREEN_WIDTH;
+
+        // Animate the fade-in effect
+        fadeOpacity.value = withTiming(1, {
+          duration: 500,
+          easing: Easing.out(Easing.ease),
+        });
       }
     }
 
@@ -156,8 +187,13 @@ function Swiper<T extends ItemData>({
     // Clear updating flag after a short delay to let rendering complete
     setTimeout(() => {
       setUpdating(false);
-    }, 0);
-  }, [initialItems, currentIndex, translateX, setUpdating]);
+
+      // Reset the recently prepended flag after animation completes
+      setTimeout(() => {
+        setRecentlyPrepended(false);
+      }, 1000);
+    }, 200);
+  }, [initialItems, currentIndex, translateX, fadeOpacity, setUpdating]);
 
   // Apply updates when items change
   useMemo(() => {
@@ -173,14 +209,18 @@ function Swiper<T extends ItemData>({
 
     const result = [];
     for (let i = startIdx; i <= endIdx; i++) {
+      // Track whether this item was recently prepended
+      const wasPrepended = recentlyPrepended && i < prependedItemCount.value;
+
       result.push({
         index: i,
         item: items[i],
+        wasPrepended,
       });
     }
 
     return result;
-  }, [items, currentIndex]);
+  }, [items, currentIndex, recentlyPrepended, prependedItemCount.value]);
 
   // Handle updating index and checking for fetch
   const handleIndexChange = useCallback(
@@ -258,16 +298,21 @@ function Swiper<T extends ItemData>({
       }
     });
 
-  // Animation style
+  // Animation styles
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
+  }));
+
+  // Fade animation style
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: fadeOpacity.value,
   }));
 
   return (
     <View className="flex-1">
       <GestureDetector gesture={panGesture}>
-        <Animated.View className="flex-1 flex-row" style={animatedStyle}>
-          {visibleItems.map(({ index, item }) => (
+        <Animated.View className="flex-1 flex-row" style={[animatedStyle, fadeStyle]}>
+          {visibleItems.map(({ index, item, wasPrepended }) => (
             <View
               key={item.id ?? index}
               className="w-screen items-center justify-center"
@@ -303,6 +348,7 @@ function Swiper<T extends ItemData>({
           visibleItemsLength={visibleItems.length}
           itemsLength={items.length}
           translateX={translateX.value}
+          recentlyPrepended={recentlyPrepended}
         />
       )}
     </View>
