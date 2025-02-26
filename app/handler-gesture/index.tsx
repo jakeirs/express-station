@@ -47,6 +47,10 @@ export default function HandlerGestureExample1Screen() {
           title="fade in 4.9.2.1"
         />
         <Button
+          onPress={() => router.push('/handler-gesture/4.9.2.2-swiper-self-correction')}
+          title="self - correction 4.9.2.2"
+        />
+        <Button
           onPress={() => router.push('/handler-gesture/4.9.3-swiper-previousEndStopping')}
           title="infinitive swiper + is prepended 4.9.3"
         />
