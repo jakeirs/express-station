@@ -1,260 +1,252 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { View, Dimensions } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  cancelAnimation,
-  runOnJS,
-} from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, ActivityIndicator, SafeAreaView } from 'react-native';
+import Swiper, { SwipeDirection, ItemData } from '~/components/4.9.2-SwiperDynamicPreviousVirtual'; // Import the Swiper component you've already created
 
-// Screen dimensions and thresholds
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
-const VISIBLE_ITEMS_THRESHOLD = 2;
-const FETCH_THRESHOLD = 4;
+// Define our item structure with TypeScript
+interface CalendarItem extends ItemData {
+  id: string;
+  date: string;
+  day: number;
+  month: string;
+  year: number;
+  events: string[];
+  color: string;
+}
 
-// Animation configuration
-const TIMING_CONFIG = {
-  duration: 300, // Animation duration in milliseconds
+// Generate a date string in YYYY-MM-DD format
+const formatDateString = (date: Date): string => {
+  return date.toISOString().split('T')[0];
 };
 
-export type SwipeDirection = 'next' | 'previous';
+// Generate a random color
+const getRandomColor = (): string => {
+  const colors = [
+    '#FF6B6B',
+    '#4ECDC4',
+    '#45B7D1',
+    '#FFBE0B',
+    '#FB5607',
+    '#8338EC',
+    '#3A86FF',
+    '#606C38',
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+};
 
-// Generic type for item data
-export interface ItemData {
-  id: string | number;
-  [key: string]: any;
-}
+// Generate calendar items for a date range
+const generateCalendarItems = (startDate: Date, days: number): CalendarItem[] => {
+  const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
 
-// Type for render item function
-export type RenderItemFunction<T extends ItemData> = (info: {
-  item: T;
-  index: number;
-}) => React.ReactNode;
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + index);
 
-// Component props
-interface SwiperProps<T extends ItemData> {
-  initialItems: T[];
-  renderItem: RenderItemFunction<T>;
-  initialIndex?: number;
-  onSwipeEnd?: (info: {
-    direction: SwipeDirection;
-    currentIndex: number;
-    distanceFromEdge: number;
-    shouldFetch: boolean;
-  }) => void;
-  fetchThreshold?: number;
-  showDebugPanel?: boolean;
-}
+    // Generate 0-3 random events for this day
+    const eventCount = Math.floor(Math.random() * 4);
+    const events = Array.from(
+      { length: eventCount },
+      (_, i) => `Event ${i + 1} on ${date.getDate()} ${months[date.getMonth()]}`
+    );
 
-// Debug component props and implementation are omitted for brevity
+    return {
+      id: formatDateString(date),
+      date: formatDateString(date),
+      day: date.getDate(),
+      month: months[date.getMonth()],
+      year: date.getFullYear(),
+      events,
+      color: getRandomColor(),
+    };
+  });
+};
 
-// Simple and stable swiper component
-function Swiper<T extends ItemData>({
-  initialItems,
-  renderItem,
-  initialIndex = 0,
-  onSwipeEnd,
-  fetchThreshold = FETCH_THRESHOLD,
-  showDebugPanel = false,
-}: SwiperProps<T>) {
-  // Store items state
-  const [items, setItems] = useState(initialItems);
+const SwiperImplementation: React.FC = () => {
+  // Current date as the reference point
+  const today = new Date();
 
-  // Current index
-  const [currentIndex, setCurrentIndex] = useState(Math.min(initialIndex, initialItems.length - 1));
+  // State for our calendar items
+  const [calendarItems, setCalendarItems] = useState<CalendarItem[]>(() => {
+    // Initially generate 15 days centered around today
+    const initialStartDate = new Date(today);
+    initialStartDate.setDate(today.getDate() - 7); // Start 7 days before today
+    return generateCalendarItems(initialStartDate, 15);
+  });
 
-  // Translation value for animation
-  const translateX = useSharedValue(-currentIndex * SCREEN_WIDTH);
+  // Track loading states separately for previous and next
+  const [isLoadingPrevious, setIsLoadingPrevious] = useState<boolean>(false);
+  const [isLoadingNext, setIsLoadingNext] = useState<boolean>(false);
 
-  // Flag to prevent interactions during animations
-  const isAnimating = useSharedValue(false);
+  // Find the index of today in our items array to set as initial
+  const findTodayIndex = useCallback(() => {
+    const todayString = formatDateString(today);
+    return calendarItems.findIndex((item) => item.date === todayString);
+  }, [calendarItems]);
 
-  // Update items when props change
-  React.useEffect(() => {
-    // Skip if no items
-    if (initialItems.length === 0) return;
+  // Initial index calculation
+  const [initialIndex] = useState<number>(() => {
+    const index = findTodayIndex();
+    return index !== -1 ? index : Math.floor(calendarItems.length / 2);
+  });
 
-    // Adjust current index if it's out of bounds
-    let newIndex = currentIndex;
-    if (currentIndex >= initialItems.length) {
-      newIndex = Math.max(0, initialItems.length - 1);
-      setCurrentIndex(newIndex);
-      translateX.value = -newIndex * SCREEN_WIDTH;
-    }
+  // Handler for fetching more data based on swipe direction
+  const handleSwipeEnd = useCallback(
+    ({
+      direction,
+      currentIndex,
+      distanceFromEdge,
+      shouldFetch,
+    }: {
+      direction: SwipeDirection;
+      currentIndex: number;
+      distanceFromEdge: number;
+      shouldFetch: boolean;
+    }) => {
+      // Only fetch if we're close to the edge and not already loading
+      if (!shouldFetch) return;
 
-    // Update items
-    setItems(initialItems);
-  }, [initialItems]);
+      if (direction === 'next' && !isLoadingNext) {
+        // Fetch future dates
+        setIsLoadingNext(true);
 
-  // Get visible items for efficient rendering
-  const visibleItems = useMemo(() => {
-    if (items.length === 0) return [];
+        // Get the last date in our current array
+        const lastItem = calendarItems[calendarItems.length - 1];
+        const lastDate = new Date(lastItem.date);
+        const newStartDate = new Date(lastDate);
+        newStartDate.setDate(newStartDate.getDate() + 1); // Start from the day after our last item
 
-    const startIdx = Math.max(0, currentIndex - VISIBLE_ITEMS_THRESHOLD);
-    const endIdx = Math.min(items.length - 1, currentIndex + VISIBLE_ITEMS_THRESHOLD);
+        console.log(`Fetching next days starting from ${formatDateString(newStartDate)}`);
 
-    const result = [];
-    for (let i = startIdx; i <= endIdx; i++) {
-      result.push({
-        index: i,
-        item: items[i],
-      });
-    }
+        // Simulate API call delay
+        setTimeout(() => {
+          const newItems = generateCalendarItems(newStartDate, 10);
+          setCalendarItems((prev) => [...prev, ...newItems]);
+          setIsLoadingNext(false);
+          console.log(`Added ${newItems.length} new future days`);
+        }, 1500);
+      } else if (direction === 'previous' && !isLoadingPrevious) {
+        // Fetch past dates
+        setIsLoadingPrevious(true);
 
-    return result;
-  }, [items, currentIndex]);
+        // Get the first date in our current array
+        const firstItem = calendarItems[0];
+        const firstDate = new Date(firstItem.date);
+        const newEndDate = new Date(firstDate);
+        newEndDate.setDate(newEndDate.getDate() - 1); // End with the day before our first item
 
-  // Handle index change and notify parent
-  const handleIndexChange = useCallback(
-    (newIndex: number, direction?: SwipeDirection) => {
-      setCurrentIndex(newIndex);
+        // Calculate start date for the new batch (10 days before)
+        const newStartDate = new Date(newEndDate);
+        newStartDate.setDate(newEndDate.getDate() - 9); // 10 days total
 
-      // Notify parent if direction is provided
-      if (direction && onSwipeEnd) {
-        // Calculate distance from edge based on direction
-        const distanceFromEdge =
-          direction === 'next'
-            ? items.length - newIndex - 1 // Distance to end
-            : newIndex; // Distance from start
+        console.log(
+          `Fetching previous days starting from ${formatDateString(newStartDate)} to ${formatDateString(newEndDate)}`
+        );
 
-        // Determine if we're close enough to the edge to fetch more
-        const shouldFetch = distanceFromEdge <= fetchThreshold;
+        // Simulate API call delay
+        setTimeout(() => {
+          const newItems = generateCalendarItems(newStartDate, 10);
+          console.log(
+            'newItems Prev',
+            newItems.map((i) => i.date)
+          );
 
-        // Notify parent
-        onSwipeEnd({
-          direction,
-          currentIndex: newIndex,
-          distanceFromEdge,
-          shouldFetch,
-        });
+          // When adding items to the beginning, we need to update currentIndex
+          // to keep the same day visible
+          setCalendarItems((prev) => [...newItems, ...prev]);
+          setIsLoadingPrevious(false);
+          console.log(`Added ${newItems.length} new past days`);
+        }, 1500);
       }
     },
-    [items.length, onSwipeEnd, fetchThreshold]
+    [calendarItems, isLoadingNext, isLoadingPrevious]
   );
 
-  // Animate to a specific index
-  const animateToIndex = useCallback(
-    (index: number, direction?: SwipeDirection) => {
-      // Skip if already animating
-      if (isAnimating.value) return;
+  // Render each calendar item
+  const renderCalendarItem = useCallback(
+    ({ item, index }: { item: CalendarItem; index: number }) => (
+      <View className="flex-1 p-6" style={{ backgroundColor: item.color }}>
+        <View className="flex-1 justify-between">
+          <View>
+            <Text className="text-3xl font-bold text-white">{item.day}</Text>
+            <Text className="text-xl text-white/90">
+              {item.month} {item.year}
+            </Text>
 
-      // Set flag to prevent new gestures
-      isAnimating.value = true;
+            <View className="mt-6 rounded-lg bg-black/10 p-3">
+              <Text className="mb-2 text-white">Index in list: {index}</Text>
+              <Text className="text-white/80">Date: {item.date}</Text>
+            </View>
 
-      // Calculate target position
-      const position = -index * SCREEN_WIDTH;
+            {item.events.length > 0 && (
+              <View className="mt-6">
+                <Text className="mb-2 font-semibold text-white">Events:</Text>
+                {item.events.map((event, i) => (
+                  <View key={i} className="mb-2 rounded-md bg-white/20 p-2">
+                    <Text className="text-white">{event}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
 
-      // Cancel any ongoing animations
-      cancelAnimation(translateX);
+          <View className="mt-4 flex-row items-center justify-between">
+            <View className="rounded-full bg-black/20 px-3 py-1">
+              <Text className="text-xs text-white">
+                {item.events.length} {item.events.length === 1 ? 'event' : 'events'}
+              </Text>
+            </View>
 
-      // Start new animation
-      translateX.value = withTiming(position, TIMING_CONFIG, (finished) => {
-        if (finished) {
-          // Only update state if animation completed (not interrupted)
-          runOnJS(handleIndexChange)(index, direction);
-
-          // Clear animating flag
-          runOnJS(() => {
-            isAnimating.value = false;
-          })();
-        }
-      });
-    },
-    [handleIndexChange]
+            <View className="rounded-full bg-white/20 px-3 py-1">
+              <Text className="text-xs text-white">ID: {item.id}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    ),
+    []
   );
-
-  // Pan gesture handler
-  const panGesture = Gesture.Pan()
-    .enabled(!isAnimating.value) // Disable during animations
-    .onStart(() => {
-      // Capture the current translation
-      cancelAnimation(translateX);
-    })
-    .onUpdate((event) => {
-      // Simple translation based on drag
-      const newPosition = -currentIndex * SCREEN_WIDTH + event.translationX;
-
-      // Apply boundaries - prevent excessive dragging
-      const minTranslate = -(items.length - 1) * SCREEN_WIDTH;
-      translateX.value = Math.max(minTranslate, Math.min(0, newPosition));
-    })
-    .onEnd((event) => {
-      // Determine if we should change slides
-      const velocityThreshold = Math.abs(event.velocityX) > 500;
-      const distanceThreshold = Math.abs(event.translationX) > SWIPE_THRESHOLD;
-
-      let newIndex = currentIndex;
-      let direction: SwipeDirection | undefined = undefined;
-
-      if (velocityThreshold || distanceThreshold) {
-        if (event.velocityX > 0 || event.translationX > 0) {
-          // Going backward (right swipe)
-          if (currentIndex > 0) {
-            newIndex = currentIndex - 1;
-            direction = 'previous';
-          }
-        } else {
-          // Going forward (left swipe)
-          if (currentIndex < items.length - 1) {
-            newIndex = currentIndex + 1;
-            direction = 'next';
-          }
-        }
-      }
-
-      // Animate to target position
-      if (newIndex !== currentIndex) {
-        runOnJS(animateToIndex)(newIndex, direction);
-      } else {
-        // If no change, just snap back
-        translateX.value = withTiming(-currentIndex * SCREEN_WIDTH, TIMING_CONFIG, () => {
-          runOnJS(() => {
-            isAnimating.value = false;
-          })();
-        });
-      }
-    });
-
-  // Animation style
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
 
   return (
-    <View className="flex-1">
-      <GestureDetector gesture={panGesture}>
-        <Animated.View className="flex-1 flex-row" style={animatedStyle}>
-          {visibleItems.map(({ index, item }) => (
-            <View
-              key={item.id ?? index}
-              className="w-screen items-center justify-center"
-              style={{
-                width: SCREEN_WIDTH,
-                position: 'absolute',
-                left: index * SCREEN_WIDTH,
-              }}>
-              <View className="h-full w-full">{renderItem({ item, index })}</View>
+    <SafeAreaView className="flex-1">
+      <View className="flex-1">
+        <Swiper
+          initialItems={calendarItems}
+          renderItem={renderCalendarItem}
+          initialIndex={initialIndex}
+          onSwipeEnd={handleSwipeEnd}
+          // fetchThreshold={6} // Start fetching when 3 items from either edge
+          showDebugPanel={true}
+        />
+
+        {/* Loading indicators */}
+        <View className="absolute top-16 w-full flex-row justify-between px-4">
+          {isLoadingPrevious && (
+            <View className="rounded-full bg-black/50 p-2">
+              <ActivityIndicator size="small" color="#ffffff" />
             </View>
-          ))}
-        </Animated.View>
-      </GestureDetector>
+          )}
 
-      {/* Pagination dots */}
-      <View className="absolute top-10 w-full flex-row items-center justify-center">
-        {items.map((_, index) => (
-          <View
-            key={index}
-            className={`mx-1 h-2 w-2 rounded-full ${
-              currentIndex === index ? 'scale-110 bg-white' : 'bg-white/50'
-            }`}
-          />
-        ))}
+          {isLoadingNext && (
+            <View className="ml-auto rounded-full bg-black/50 p-2">
+              <ActivityIndicator size="small" color="#ffffff" />
+            </View>
+          )}
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
-}
+};
 
-export default Swiper;
+export default SwiperImplementation;

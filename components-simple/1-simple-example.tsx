@@ -17,7 +17,7 @@ const FETCH_THRESHOLD = 4;
 
 // Animation configuration
 const TIMING_CONFIG = {
-  duration: 300, // Animation duration in milliseconds
+  duration: 2000, // Animation duration in milliseconds
 };
 
 export type SwipeDirection = 'next' | 'previous';
@@ -211,9 +211,7 @@ function Swiper<T extends ItemData>({
       } else {
         // If no change, just snap back
         translateX.value = withTiming(-currentIndex * SCREEN_WIDTH, TIMING_CONFIG, () => {
-          runOnJS(() => {
-            isAnimating.value = false;
-          })();
+          isAnimating.value = false;
         });
       }
     });
