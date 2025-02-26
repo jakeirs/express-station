@@ -1,11 +1,10 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { View, Dimensions, ScrollView, Text } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   runOnJS,
-  useAnimatedReaction,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
@@ -70,9 +69,9 @@ function DebugLog({
       <Text className="text-xs text-white">Current Index: {currentIndex}</Text>
       <Text className="text-xs text-white">translateX: {translateX}</Text>
       <Text className="text-xs text-white">
-        visible Items: {visibleItemsLength}
+        visible Items: {JSON.stringify(visibleItemsLength)}
       </Text>
-      <Text className="text-xs text-white">itemsLength: {itemsLength}</Text>
+      <Text className="text-xs text-white">itemsLength : {itemsLength}</Text>
       <Text className="text-xs text-white">Total Items: {itemCount}</Text>
       <Text className="text-xs text-white">Is Updating: {isUpdating ? 'Yes' : 'No'}</Text>
       <Text className="text-xs text-white">Distance to Start: {currentIndex}</Text>
@@ -81,6 +80,7 @@ function DebugLog({
   );
 }
 
+// Simple and stable swiper that handles prepended items
 function Swiper<T extends ItemData>({
   initialItems,
   renderItem,
@@ -92,34 +92,26 @@ function Swiper<T extends ItemData>({
   // Store current set of items
   const [items, setItems] = useState(initialItems);
 
-  // Use a shared value for current index to ensure UI thread synchronization
-  const currentIndexShared = useSharedValue(Math.min(initialIndex, initialItems.length - 1));
-  
-  // Also maintain React state version for components that need it
+  // Keep track of the current index
   const [currentIndex, setCurrentIndex] = useState(Math.min(initialIndex, initialItems.length - 1));
 
-  // Flag to track if we're updating items - using shared value for UI thread access
+  // Flag to track if we're currently updating items - using shared value
+  // This ensures it's immediately available on both JS and UI threads
   const isUpdating = useSharedValue(false);
-  const isPrepending = useSharedValue(false);
 
   // Animation value for position
-  const translateX = useSharedValue(-currentIndexShared.value * SCREEN_WIDTH);
+  const translateX = useSharedValue(-currentIndex * SCREEN_WIDTH);
 
   // Reference to previous props for comparison
   const prevItemsRef = useRef(initialItems);
   const prevItemsFirstIdRef = useRef(initialItems.length > 0 ? initialItems[0].id : null);
 
-  // Sync shared value to React state
-  useEffect(() => {
-    setCurrentIndex(currentIndexShared.value);
-  }, [currentIndexShared.value]);
-
-  // Function to synchronize isUpdating
+  // Function to synchronize isUpdating between threads
   const setUpdating = useCallback(
     (value: boolean) => {
       isUpdating.value = value;
     },
-    [isUpdating]
+    [isUpdating.value]
   );
 
   // Handle updates to items - this is crucial for prepended items
@@ -129,9 +121,8 @@ function Swiper<T extends ItemData>({
       return;
     }
 
-    // Set updating flag to disable gestures
+    // Set updating flag to disable gestures - immediately available on UI thread
     setUpdating(true);
-    isPrepending.value = true;
 
     // Handle the case when new items are prepended
     if (prevItemsFirstIdRef.current !== null && initialItems.length > prevItemsRef.current.length) {
@@ -149,11 +140,7 @@ function Swiper<T extends ItemData>({
 
       // If items were prepended, adjust the current index
       if (foundFirstItem && prependedCount > 0) {
-        // Update shared value directly - this happens on UI thread
-        const newIndex = currentIndexShared.value + prependedCount;
-        currentIndexShared.value = newIndex;
-        
-        // Also update React state
+        const newIndex = currentIndex + prependedCount;
         setCurrentIndex(newIndex);
 
         // Directly update animation value to prevent visual jump
@@ -166,12 +153,11 @@ function Swiper<T extends ItemData>({
     prevItemsRef.current = initialItems;
     prevItemsFirstIdRef.current = initialItems.length > 0 ? initialItems[0].id : null;
 
-    // Clear updating flags after a short delay
+    // Clear updating flag after a short delay to let rendering complete
     setTimeout(() => {
-      isPrepending.value = false;
       setUpdating(false);
-    }, 100);
-  }, [initialItems, currentIndexShared, translateX, setUpdating]);
+    }, 0);
+  }, [initialItems, currentIndex, translateX, setUpdating]);
 
   // Apply updates when items change
   useMemo(() => {
@@ -196,56 +182,62 @@ function Swiper<T extends ItemData>({
     return result;
   }, [items, currentIndex]);
 
-  // Check if we need to fetch more data
-  const checkFetchNeeded = useCallback(
-    (direction: SwipeDirection, index: number) => {
-      if (!onSwipeEnd) return;
+  // Handle updating index and checking for fetch
+  const handleIndexChange = useCallback(
+    (newIndex: number, direction?: SwipeDirection) => {
+      // Don't update if currently updating items
+      if (isUpdating.value) return;
 
-      const distanceFromEdge = direction === 'next' ? items.length - index - 1 : index;
-      const shouldFetch = distanceFromEdge <= fetchThreshold;
+      setCurrentIndex(newIndex);
 
-      onSwipeEnd({
-        direction,
-        currentIndex: index,
-        distanceFromEdge,
-        shouldFetch,
-      });
+      if (direction && onSwipeEnd) {
+        const distanceFromEdge = direction === 'next' ? items.length - newIndex - 1 : newIndex;
+
+        const shouldFetch = distanceFromEdge <= fetchThreshold;
+
+        onSwipeEnd({
+          direction,
+          currentIndex: newIndex,
+          distanceFromEdge,
+          shouldFetch,
+        });
+      }
     },
-    [items.length, onSwipeEnd, fetchThreshold]
+    [items.length, onSwipeEnd, fetchThreshold, isUpdating.value]
   );
 
-  // Pan gesture for swiping - disabled during updates
+  // Basic pan gesture for swiping - disabled during updates
   const panGesture = Gesture.Pan()
-    .enabled(!isUpdating.value && !isPrepending.value)
+    .enabled(!isUpdating.value) // Using shared value for immediate checking on UI thread
     .onUpdate((event) => {
-      // Skip if updating
-      if (isUpdating.value || isPrepending.value) return;
+      // Skip if updating - this check happens directly on the UI thread
+      if (isUpdating.value) return;
 
       // Simple translation based on drag
-      translateX.value = -currentIndexShared.value * SCREEN_WIDTH + event.translationX;
+      translateX.value = -currentIndex * SCREEN_WIDTH + event.translationX;
     })
     .onEnd((event) => {
-      // Skip if updating
-      if (isUpdating.value || isPrepending.value) return;
+      // Skip if updating - this check happens directly on the UI thread
+      if (isUpdating.value) return;
 
       // Determine if we should change slides
       const velocityThreshold = Math.abs(event.velocityX) > 500;
       const distanceThreshold = Math.abs(event.translationX) > SWIPE_THRESHOLD;
 
-      let newIndex = currentIndexShared.value;
+      let newIndex = currentIndex;
       let direction = undefined;
 
       if (velocityThreshold || distanceThreshold) {
         if (event.velocityX > 0 || event.translationX > 0) {
           // Going backward (right swipe)
-          if (currentIndexShared.value > 0) {
-            newIndex = currentIndexShared.value - 1;
+          if (currentIndex > 0) {
+            newIndex = currentIndex - 1;
             direction = 'previous';
           }
         } else {
           // Going forward (left swipe)
-          if (currentIndexShared.value < items.length - 1) {
-            newIndex = currentIndexShared.value + 1;
+          if (currentIndex < items.length - 1) {
+            newIndex = currentIndex + 1;
             direction = 'next';
           }
         }
@@ -253,24 +245,15 @@ function Swiper<T extends ItemData>({
 
       // Animate to the final position
       translateX.value = withSpring(-newIndex * SCREEN_WIDTH, {
-        damping: 40,
-        stiffness: 50,
-        mass: 0.2,
+        damping: 20,
+        stiffness: 100,
+        mass: 0.5,
         velocity: event.velocityX,
-        overshootClamping: true,
       });
 
-      // Update shared index first (UI thread)
-      if (newIndex !== currentIndexShared.value) {
-        currentIndexShared.value = newIndex;
-        
-        // Then notify JS thread for fetch checks and state updates
-        if (direction) {
-          runOnJS(checkFetchNeeded)(direction, newIndex);
-        }
-        
-        // Update React state
-        runOnJS(setCurrentIndex)(newIndex);
+      // Update the index if changed - must use runOnJS to call back to JS thread
+      if (newIndex !== currentIndex) {
+        runOnJS(handleIndexChange)(newIndex, direction);
       }
     });
 
