@@ -100,7 +100,7 @@ function SwiperMan<T extends ItemData>({
   showDebugPanel = false,
   springConfig = {
     damping: 20,
-    stiffness: 100,
+    stiffness: 200,
     mass: 0.5,
   },
   disableGestures = false,
