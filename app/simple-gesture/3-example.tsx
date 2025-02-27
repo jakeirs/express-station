@@ -1,9 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, ActivityIndicator, SafeAreaView } from 'react-native';
-import SwiperMan, {
-  type ItemData,
-  type SwipeDirection,
-} from '~/components-simple/3-simple-cooldown';
+import Swiper, { SwipeDirection, ItemData } from '~/components-simple/3-simple-cooldown'; // Import the Swiper component you've already created
 
 // Define our item structure with TypeScript
 interface CalendarItem extends ItemData {
@@ -151,7 +148,7 @@ const SwiperImplementation: React.FC = () => {
 
         // Calculate start date for the new batch (10 days before)
         const newStartDate = new Date(newEndDate);
-        newStartDate.setDate(newEndDate.getDate() - 9); // 10 days total
+        newStartDate.setDate(newEndDate.getDate() - 29); // 10 days total
 
         console.log(
           `Fetching previous days starting from ${formatDateString(newStartDate)} to ${formatDateString(newEndDate)}`
@@ -159,7 +156,7 @@ const SwiperImplementation: React.FC = () => {
 
         // Simulate API call delay
         setTimeout(() => {
-          const newItems = generateCalendarItems(newStartDate, 10);
+          const newItems = generateCalendarItems(newStartDate, 30);
           console.log(
             'newItems Prev',
             newItems.map((i) => i.date)
@@ -224,7 +221,7 @@ const SwiperImplementation: React.FC = () => {
   return (
     <SafeAreaView className="flex-1">
       <View className="flex-1">
-        <SwiperMan
+        <Swiper
           initialItems={calendarItems}
           renderItem={renderCalendarItem}
           initialIndex={initialIndex}
