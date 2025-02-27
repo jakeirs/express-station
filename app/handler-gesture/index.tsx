@@ -31,14 +31,6 @@ export default function HandlerGestureExample1Screen() {
           title="infinitive swiper + previous items 4.8"
         />
         <Button
-          onPress={() => router.push('/handler-gesture/4.9-swiper-previousMigocze')}
-          title="infinitive swiper + previous items + migocze 4.9"
-        />
-        <Button
-          onPress={() => router.push('/handler-gesture/4.9.1-swiper-previousExp')}
-          title="infinitive swiper + previous items + exp 4.9.1"
-        />
-        <Button
           onPress={() => router.push('/handler-gesture/4.9.2-swiper-previousVirtual')}
           title="infinitive swiper + previous items + virtual 4.9.2"
         />
@@ -53,26 +45,6 @@ export default function HandlerGestureExample1Screen() {
         <Button
           onPress={() => router.push('/handler-gesture/4.9.2.3-swiper-previousEndStopping')}
           title="self correction + fade + boundry + 4.9.2.3"
-        />
-        <Button
-          onPress={() => router.push('/handler-gesture/5-infinitive-fetch')}
-          title="infinitive swiper Fetch"
-        />
-        <Button
-          onPress={() => router.push('/handler-gesture/6-infinitive-fetch-2')}
-          title="infinitive swiper Fetch 2"
-        />
-        <Button
-          onPress={() => router.push('/handler-gesture/7-infinitive-fetch-logging')}
-          title="infinitive swiper Fetch + logging"
-        />
-        <Button
-          onPress={() => router.push('/handler-gesture/7-infinitive-fetch-logging-TRY-TO-DESTROY')}
-          title="infinitive swiper Fetch + logging - Simon"
-        />
-        <Button
-          onPress={() => router.push('/handler-gesture/8-infinitive-fetch-logging-both-directions')}
-          title="infinitive swiper Fetch + logging + both directions"
         />
       </View>
     </ScrollView>
