@@ -7,6 +7,8 @@ import Animated, {
   runOnJS,
   useAnimatedReaction,
   configureReanimatedLogger,
+  withTiming,
+  Easing,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
@@ -54,6 +56,7 @@ interface DebugLogProps {
   isUpdating: boolean;
   visibleItemsLength: number;
   selfCorrections: number;
+  fadeOpacity: number;
 }
 
 // Debug component
@@ -65,6 +68,7 @@ function DebugLog({
   itemsLength,
   translateX,
   selfCorrections,
+  fadeOpacity,
 }: DebugLogProps) {
   return (
     <ScrollView
@@ -77,6 +81,7 @@ function DebugLog({
       <Text className="text-xs text-white">Total Items: {itemCount}</Text>
       <Text className="text-xs text-white">Is Updating: {isUpdating ? 'Yes' : 'No'}</Text>
       <Text className="text-xs text-white">Self Corrections: {selfCorrections}</Text>
+      <Text className="text-xs text-white">Fade Opacity: {fadeOpacity}</Text>
       <Text className="text-xs text-white">Distance to Start: {currentIndex}</Text>
       <Text className="text-xs text-white">Distance to End: {itemCount - currentIndex - 1}</Text>
     </ScrollView>
@@ -108,6 +113,9 @@ function Swiper<T extends ItemData>({
 
   // Animation value for position
   const translateX = useSharedValue(-currentIndexShared.value * SCREEN_WIDTH);
+
+  // Animation values for fade-in effect
+  const fadeOpacity = useSharedValue(1);
 
   // Reference to previous props for comparison
   const prevItemsRef = useRef(initialItems);
@@ -179,6 +187,9 @@ function Swiper<T extends ItemData>({
       return;
     }
 
+    // Reset fade animation state
+    fadeOpacity.value = 1;
+
     // Set updating flag to disable gestures
     setUpdating(true);
     isPrepending.value = true;
@@ -198,8 +209,11 @@ function Swiper<T extends ItemData>({
         }
       }
 
-      // If items were prepended, adjust the current index
+      // If items were prepended, adjust the current index and set up animation
       if (foundFirstItem && prependedCount > 0) {
+        // Start with opacity at 0 for fade-in effect
+        fadeOpacity.value = 0;
+
         // Update both shared value and state for maximum reliability
         const newIndex = currentIndex + prependedCount;
         currentIndexShared.value = newIndex;
@@ -207,6 +221,12 @@ function Swiper<T extends ItemData>({
 
         // Directly update animation value to prevent visual jump
         translateX.value = -newIndex * SCREEN_WIDTH;
+
+        // Animate the fade-in effect
+        fadeOpacity.value = withTiming(1, {
+          duration: 500,
+          easing: Easing.out(Easing.ease),
+        });
       }
     }
 
@@ -241,6 +261,7 @@ function Swiper<T extends ItemData>({
     setUpdating,
     performSelfCorrection,
     currentIndexShared,
+    fadeOpacity,
   ]);
 
   // Apply updates when items change
@@ -362,10 +383,15 @@ function Swiper<T extends ItemData>({
     transform: [{ translateX: translateX.value }],
   }));
 
+  // Fade animation style
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: fadeOpacity.value,
+  }));
+
   return (
     <View className="flex-1">
       <GestureDetector gesture={panGesture}>
-        <Animated.View className="flex-1 flex-row" style={animatedStyle}>
+        <Animated.View className="flex-1 flex-row" style={[animatedStyle, fadeStyle]}>
           {visibleItems.map(({ index, item }) => (
             <View
               key={item.id ?? index}
@@ -403,6 +429,7 @@ function Swiper<T extends ItemData>({
           itemsLength={items.length}
           translateX={translateX.value}
           selfCorrections={selfCorrections}
+          fadeOpacity={fadeOpacity.value}
         />
       )}
     </View>
