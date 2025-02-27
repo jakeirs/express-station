@@ -43,10 +43,6 @@ export default function HandlerGestureExample1Screen() {
           title="infinitive swiper + previous items + virtual 4.9.2"
         />
         <Button
-          onPress={() => router.push('/handler-gesture/4.9.2xxx.1-swiper-previousVirtual')}
-          title="swiper + 4.9.2 + self-alignment - 4.9.2xxx.1"
-        />
-        <Button
           onPress={() => router.push('/handler-gesture/4.9.2.1-fade-in')}
           title="fade in 4.9.2.1"
         />
@@ -55,8 +51,8 @@ export default function HandlerGestureExample1Screen() {
           title="self - correction 4.9.2.2 CONFIGURATION 30 fetch size"
         />
         <Button
-          onPress={() => router.push('/handler-gesture/4.9.3-swiper-previousEndStopping')}
-          title="infinitive swiper + is prepended 4.9.3"
+          onPress={() => router.push('/handler-gesture/4.9.2.3-swiper-previousEndStopping')}
+          title="self correction + fade + boundry + 4.9.2.3"
         />
         <Button
           onPress={() => router.push('/handler-gesture/5-infinitive-fetch')}
