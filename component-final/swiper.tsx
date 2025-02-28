@@ -346,7 +346,7 @@ function Swiper<T extends ItemData>({
       </GestureDetector>
 
       {/* Pagination dots */}
-      <View className="absolute top-10 w-full flex-row items-center justify-center">
+      {/* <View className="absolute top-10 w-full flex-row items-center justify-center">
         {items.map((_, index) => (
           <View
             key={index}
@@ -355,7 +355,7 @@ function Swiper<T extends ItemData>({
             }`}
           />
         ))}
-      </View>
+      </View> */}
 
       {/* Debug panel */}
       {showDebugPanel && (

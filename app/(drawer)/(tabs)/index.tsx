@@ -8,6 +8,7 @@ export default function TabOneScreen() {
       <Text className="text-2xl font-bold">useState Example</Text>
       <Button onPress={() => router.push('/handler-gesture')} title="Go to handle gesture" />
       <Button onPress={() => router.push('/simple-gesture')} title="Simple gesture" />
+      <Button onPress={() => router.push('/calendar-swiper')} title="Calendar Swiper" />
     </View>
   );
 }
