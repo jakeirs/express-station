@@ -179,7 +179,7 @@ const Top: React.FC<DateCarouselProps> = ({
   const renderGroup = useCallback(
     ({ item }: { item: DateGroup; index: number }) => {
       return (
-        <View className="h-24 flex-row items-center justify-center bg-orange-500">
+        <View className="w-full max-w-full flex-row items-center justify-center bg-orange-500 p-3">
           {item.dates.map((dateItem) => {
             const isSelected = isSameDay(dateItem.date, activeDate);
             const isCurrentDay = isToday(dateItem.date);
@@ -189,13 +189,12 @@ const Top: React.FC<DateCarouselProps> = ({
                 key={dateItem.id}
                 onPress={() => handleDatePress(dateItem.date)}
                 className={`
-                  mx-1 items-center justify-center rounded-full py-2
+                  items-center justify-center rounded-full px-1 py-2
                   ${isSelected ? 'bg-yellow-500' : 'bg-red-500'}
                   ${isCurrentDay && !isSelected ? 'border border-white' : ''}
                 `}
                 style={{
-                  width: dateItemWidth - 8, // Subtract margin
-                  height: 70,
+                  width: `${100 / daysToShow - 1}%`,
                 }}>
                 <Text
                   className={`
@@ -218,11 +217,11 @@ const Top: React.FC<DateCarouselProps> = ({
         </View>
       );
     },
-    [activeDate, handleDatePress, dateItemWidth]
+    [activeDate, handleDatePress, daysToShow]
   );
 
   return (
-    <View className="h-24 bg-gray-900">
+    <View className="h-24 bg-blue-500">
       <Swiper
         initialItems={dateGroups}
         renderItem={renderGroup}
