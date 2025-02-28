@@ -179,7 +179,7 @@ const Top: React.FC<DateCarouselProps> = ({
   const renderGroup = useCallback(
     ({ item }: { item: DateGroup; index: number }) => {
       return (
-        <View className="h-24 flex-row items-center justify-center bg-black">
+        <View className="h-24 flex-row items-center justify-center bg-orange-500">
           {item.dates.map((dateItem) => {
             const isSelected = isSameDay(dateItem.date, activeDate);
             const isCurrentDay = isToday(dateItem.date);
@@ -190,7 +190,7 @@ const Top: React.FC<DateCarouselProps> = ({
                 onPress={() => handleDatePress(dateItem.date)}
                 className={`
                   mx-1 items-center justify-center rounded-full py-2
-                  ${isSelected ? 'bg-yellow-200' : 'bg-transparent'}
+                  ${isSelected ? 'bg-yellow-500' : 'bg-red-500'}
                   ${isCurrentDay && !isSelected ? 'border border-white' : ''}
                 `}
                 style={{
