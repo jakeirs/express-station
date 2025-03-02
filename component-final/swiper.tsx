@@ -327,48 +327,26 @@ function Swiper<T extends ItemData>({
   }));
 
   return (
-    <View className="flex-1">
+    <View className="flex-1 bg-green-500" style={{ minHeight: 20, flexGrow: 0 }}>
+      {/* Fixed height for swiper */}
       <GestureDetector gesture={panGesture}>
         <Animated.View className="flex-1 flex-row" style={[animatedStyle, fadeStyle]}>
           {visibleItems.map(({ index, item }) => (
             <View
               key={item.id ?? index}
-              className="w-screen items-center justify-center"
               style={{
                 width: SCREEN_WIDTH,
                 position: 'absolute',
                 left: index * SCREEN_WIDTH,
+                height: '100%',
+                justifyContent: 'center',
+                alignItems: 'center',
               }}>
               <View className="h-full w-full">{renderItem({ item, index })}</View>
             </View>
           ))}
         </Animated.View>
       </GestureDetector>
-
-      {/* Pagination dots */}
-      {/* <View className="absolute top-10 w-full flex-row items-center justify-center">
-        {items.map((_, index) => (
-          <View
-            key={index}
-            className={`mx-1 h-2 w-2 rounded-full ${
-              currentIndex === index ? 'scale-110 bg-white' : 'bg-white/50'
-            }`}
-          />
-        ))}
-      </View> */}
-
-      {/* Debug panel */}
-      {showDebugPanel && (
-        <DebugLog
-          currentIndex={currentIndex}
-          itemCount={items.length}
-          isUpdating={isUpdating.value}
-          visibleItemsLength={visibleItems.length}
-          itemsLength={items.length}
-          translateX={translateX.value}
-          fadeOpacity={fadeOpacity.value}
-        />
-      )}
     </View>
   );
 }
