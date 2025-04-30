@@ -12,6 +12,7 @@ export default function HandlerGestureExample1Screen() {
           onPress={() => router.push('/cases/flex1')}
           title="Flex 1 - Scrollable - take remaining space"
         />
+        <Button onPress={() => router.push('/textarea')} title="TexArea" />
       </View>
     </ScrollView>
   );

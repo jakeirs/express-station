@@ -21,6 +21,7 @@ const DrawerLayout = () => (
         drawerIcon: ({ size, color }) => (
           <MaterialIcons name="border-bottom" size={size} color={color} />
         ),
+        headerStyle: { backgroundColor: 'black' },
         headerRight: () => (
           <Link href="/modal" asChild>
             <HeaderButton />

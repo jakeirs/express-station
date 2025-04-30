@@ -8,20 +8,7 @@ export default function TabTwoScreen() {
 
   return (
     <View className="flex-1 items-center justify-center gap-4">
-      <Text className="text-2xl font-bold">Zustand Example</Text>
 
-      <View className="items-center gap-2">
-        <Text className="text-xl">Bears: {bears}</Text>
-
-        <Button title="Add Bear 🐻" onPress={increasePopulation} />
-
-        <Button title="Remove All Bears" onPress={removeAllBears} />
-      </View>
-
-      <Text className="mt-4 max-w-[80%] text-center text-sm text-gray-500">
-        This is a simple Zustand example showing state management across components. The state
-        persists as you navigate between tabs.
-      </Text>
     </View>
   );
 }
