@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -12,20 +12,42 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const SimpleNotepad = () => {
   const [text, setText] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const scrollViewRef = useRef(null);
+  
+  const handleTextChange = (newText) => {
+    setText(newText);
+  };
+  
+  const handleContentSizeChange = () => {
+    // Scroll to the bottom when content size changes
+    scrollViewRef.current?.scrollToEnd({ animated: false });
+  };
+  
+  const handleSelectionChange = (event) => {
+    // Scroll to keep the cursor visible when selection changes
+    scrollViewRef.current?.scrollToEnd({ animated: false });
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardContainer}>
-        <ScrollView style={styles.scroll} keyboardDismissMode="interactive">
+        <ScrollView 
+          ref={scrollViewRef}
+          style={styles.scroll} 
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={true}
+          onContentSizeChange={handleContentSizeChange}
+        >
           <View style={{ height: 500, backgroundColor: 'green' }}></View>
           <View style={styles.noteContainer}>
             <TextInput
               style={styles.editor}
               multiline
               value={text}
-              onChangeText={setText}
+              onChangeText={handleTextChange}
+              onSelectionChange={handleSelectionChange}
               placeholder="Zacznij pisać swoją notatkę..."
             />
           </View>
