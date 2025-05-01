@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import Editor from './Editor';
+import Editor from './EditorInputScrollAware';
 
 const TextAreaComponent = () => {
   return (
