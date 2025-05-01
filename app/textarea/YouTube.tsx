@@ -24,7 +24,6 @@ const StackOverFlow: React.FC<Props> = ({
 
   const renderScrollView = (
     <ScrollView
-      className="flex-1"
       contentContainerStyle={{ flexGrow: 1, ...scrollContentContainerStyle }}
       contentInsetAdjustmentBehavior="never"
       keyboardShouldPersistTaps="handled"
