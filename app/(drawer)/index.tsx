@@ -21,12 +21,11 @@ import { useState, useRef } from 'react';
 import Slider from '../textarea/ReanimatedInput';
 import DOMComponent from '../textarea/LexicalExpo';
 import Editor from '../textarea/dom-components/hello-dom';
-import AnimatedTextInputComponent from '../textarea';
-
-// Create animated TextInput component
-const AnimatedTextInput = Animated.createAnimatedComponent(RNTextInput);
+import { AnimatedTextInput } from '../textarea';
 
 export default function Home() {
+  const [inputText, setInputText] = useState('');
+
   return (
     <>
       <Stack.Screen options={{ title: 'Home' }} />
@@ -51,7 +50,12 @@ export default function Home() {
           <View className="flex-1">
             <View className="h-[200px] bg-green-500"></View>
             <View className="h-[400px] bg-black"></View>
-            <AnimatedTextInputComponent />
+            <AnimatedTextInput
+              value={inputText}
+              onChangeText={setInputText}
+              className="rounded-lg border"
+              placeholder="Kipas"
+            />
             {/* <Editor setPlainText={setPlainText} setEditorState={setEditorState} /> */}
           </View>
         </StackOverFlow>
