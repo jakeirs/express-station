@@ -16,12 +16,12 @@ const AnimatedTextInput = Animated.createAnimatedComponent(RNTextInput);
 
 const AnimatedTextInputComponent = () => {
   const [inputText, setInputText] = useState('');
-  const inputHeight = useSharedValue(70); // Start with height for 2 lines
+  const inputHeight = useSharedValue(80); // Start with height for 2 lines
 
   const animatedStyles = useAnimatedStyle(() => {
     return {
       height: inputHeight.value,
-      minHeight: 70, // Ensure minimum height for 2 lines
+      minHeight: inputHeight.value, // Ensure minimum height for 2 lines
     };
   });
 
@@ -30,7 +30,7 @@ const AnimatedTextInputComponent = () => {
     console.log('height', height);
 
     // Always update height based on content, but maintain minimum height
-    const newHeight = Math.max(70, height); // Ensure minimum height for 2 lines
+    const newHeight = Math.max(inputHeight.value, height); // Ensure minimum height for 2 lines
 
     // Use different animations for growing vs shrinking
     if (newHeight > inputHeight.value) {
@@ -74,4 +74,5 @@ const AnimatedTextInputComponent = () => {
   );
 };
 
+export default AnimatedTextInputComponent;
 export default AnimatedTextInputComponent;
