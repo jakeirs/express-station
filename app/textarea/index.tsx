@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { Stack } from 'expo-router';
 import {
-  View,
-  Text,
   TextInput as RNTextInput,
   type TextInputContentSizeChangeEventData,
   type NativeSyntheticEvent,
+  type LayoutChangeEvent,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -31,11 +29,35 @@ const AnimatedTextInputComponent = () => {
     const height = e.nativeEvent.contentSize.height;
     console.log('height', height);
 
-    // Update height if content requires more space
-    if (height > inputHeight.value) {
-      inputHeight.value = withTiming(Math.max(70, height), { duration: 150 });
+    // Always update height based on content, but maintain minimum height
+    const newHeight = Math.max(70, height); // Ensure minimum height for 2 lines
+
+    // Use different animations for growing vs shrinking
+    if (newHeight > inputHeight.value) {
+      // Growing - use faster timing for smooth expansion
+      inputHeight.value = withTiming(newHeight, { duration: 140 });
+    } else if (newHeight < inputHeight.value) {
+      // Shrinking - use slightly slower timing for natural feel
+      inputHeight.value = withTiming(newHeight, { duration: 200 });
     }
   };
+
+  const handleKeyPress = (e: any) => {
+    console.log('handleKeyPress');
+
+    if (e.nativeEvent.key === 'Enter') {
+      console.log('inputHeight.value', inputHeight.value);
+      // Add extra height with animation when Enter is pressed
+      inputHeight.value = withSpring(inputHeight.value + 20);
+    }
+  };
+
+  const onLayout = (event: LayoutChangeEvent) => {
+    const h = event.nativeEvent.layout.height;
+
+    console.log('h', h);
+  };
+
   return (
     <AnimatedTextInput
       className="mr-2 rounded-xl border border-gray-300 bg-white px-4 py-2"
@@ -45,6 +67,8 @@ const AnimatedTextInputComponent = () => {
       textAlignVertical="top"
       multiline
       onContentSizeChange={onContentSizeChange}
+      onKeyPress={handleKeyPress}
+      onLayout={onLayout}
       style={[animatedStyles]}
     />
   );
