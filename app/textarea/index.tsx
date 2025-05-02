@@ -17,6 +17,7 @@ const AnimatedTextInput = Animated.createAnimatedComponent(RNTextInput);
 const AnimatedTextInputComponent = () => {
   const [inputText, setInputText] = useState('');
   const inputHeight = useSharedValue(100); // Start with height for 2 lines
+  const lastContentHeight = useSharedValue(0); // Track the last content height
 
   const animatedStyles = useAnimatedStyle(() => {
     return {
@@ -29,22 +30,30 @@ const AnimatedTextInputComponent = () => {
     const height = e.nativeEvent.contentSize.height;
     console.log('height', height, inputHeight.value);
 
-    // Calculate new height based on content, but maintain minimum height of 70
-    const newHeight = Math.max(inputHeight.value, height);
+    // Determine if content is growing or shrinking
+    const isGrowing = height > lastContentHeight.value;
+    const isShrinking = height < lastContentHeight.value;
 
-    // Always update height based on content size
-    if (newHeight < inputHeight.value) {
-      // Shrinking - use slightly slower timing for natural feel
-      inputHeight.value = withTiming(newHeight, { duration: 200 });
-    } else if (newHeight > inputHeight.value) {
-      // Growing - use faster timing for smooth expansion
-      inputHeight.value = withTiming(newHeight, { duration: 140 });
+    // Update the last content height
+    lastContentHeight.value = height;
+
+    // Maintain minimum height of 70 and always keep a buffer of one line (20px) when shrinking
+    const minHeight = 70;
+    const lineBuffer = 30; // Approximate height of one line
+
+    if (isGrowing && height > inputHeight.value) {
+      // Content is growing and exceeds current height - expand
+      inputHeight.value = withTiming(height + lineBuffer, { duration: 140 });
+      console.log('height + lineBuffer', height + lineBuffer);
+    } else if (isShrinking) {
+      // Content is shrinking - shrink to content height plus buffer but maintain minimum
+      const targetHeight = Math.max(minHeight, height + lineBuffer);
+      inputHeight.value = withTiming(targetHeight, { duration: 200 });
     }
   };
 
   const handleKeyPress = (e: any) => {
-    console.log('handleKeyPress');
-
+    // console.log('handleKeyPress');
     if (e.nativeEvent.key === 'Enter') {
       console.log('inputHeight.value', inputHeight.value);
       // Add extra height with animation when Enter is pressed
