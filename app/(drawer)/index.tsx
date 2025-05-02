@@ -47,9 +47,10 @@ export default function Home() {
         {/* <Slider /> */}
         <StackOverFlow>
           <View className="flex-1">
-            <View className="h-[900px] bg-green-500"></View>
+            <View className="h-[200px] bg-green-500"></View>
+            <View className="h-[400px] bg-black"></View>
             <TextInput
-              className="mr-2 min-h-[200px] rounded-xl border border-gray-300 bg-white px-4 py-2"
+              className="mr-2 rounded-xl border border-gray-300 bg-white px-4 py-2"
               value={inputText}
               onChangeText={setInputText}
               placeholder="Type a message..."

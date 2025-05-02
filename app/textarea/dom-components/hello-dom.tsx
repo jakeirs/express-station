@@ -61,9 +61,9 @@ export default function Editor({
               ignoreHistoryMergeTagChange
               ignoreSelectionChange
             />
-            <HistoryPlugin />
+            {/* <HistoryPlugin /> */}
             <AutoFocusPlugin />
-            <TreeViewPlugin />
+            {/* <TreeViewPlugin /> */}
           </div>
         </div>
       </LexicalComposer>
