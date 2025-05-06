@@ -1,10 +1,11 @@
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import {
   View,
   Text,
   TextInput as RNTextInput,
   type TextInputContentSizeChangeEventData,
   type NativeSyntheticEvent,
+  Pressable,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -25,6 +26,7 @@ import { AnimatedTextInput } from '../textarea';
 
 export default function Home() {
   const [inputText, setInputText] = useState('');
+  const [inputTexts, setInputState] = useState('');
 
   return (
     <>
@@ -50,12 +52,26 @@ export default function Home() {
           <View className="flex-1">
             <View className="h-[200px] bg-green-500"></View>
             <View className="h-[400px] bg-black"></View>
+            {/* <View className="h-[400px] flex-1">
+              <Editor setEditorState={setInputState} setPlainText={setInputText} />
+            </View> */}
+            <Pressable onPress={() => router.push('/cases')}>
+              <Text>Go to Cases</Text>
+            </Pressable>
             <AnimatedTextInput
               value={inputText}
               onChangeText={setInputText}
               className="rounded-lg border"
               placeholder="Kipas"
             />
+            <AnimatedTextInput
+              value={inputText}
+              onChangeText={setInputText}
+              className="rounded-lg border"
+              placeholder="Kipas"
+            />
+            <View className="h-[400px] bg-black"></View>
+
             {/* <Editor setPlainText={setPlainText} setEditorState={setEditorState} /> */}
           </View>
         </StackOverFlow>
