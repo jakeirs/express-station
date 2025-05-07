@@ -28,6 +28,12 @@ export default function Home() {
   const [inputText, setInputText] = useState('');
   const [inputTexts, setInputState] = useState('');
 
+  const translateStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: -0 }],
+    };
+  });
+
   return (
     <>
       <Stack.Screen options={{ title: 'Home' }} />
@@ -64,12 +70,8 @@ export default function Home() {
               className="rounded-lg border"
               placeholder="Kipas"
             />
-            <AnimatedTextInput
-              value={inputText}
-              onChangeText={setInputText}
-              className="rounded-lg border"
-              placeholder="Kipas"
-            />
+            <Animated.View style={translateStyle} />
+
             <View className="h-[400px] bg-black"></View>
 
             {/* <Editor setPlainText={setPlainText} setEditorState={setEditorState} /> */}
