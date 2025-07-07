@@ -1,14 +1,8 @@
 import { Tabs, TabList, TabTrigger, TabSlot, useTabSlot } from 'expo-router/ui';
 import { Text, Dimensions } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  interpolate,
-} from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Screen } from 'react-native-screens';
 import type { TabsDescriptor, TabsSlotRenderOptions } from 'expo-router/ui';
-import { CustomTabList } from './components/CustomTabList';
 import { TabButton } from './components/TabButton';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -27,8 +21,11 @@ export default function TabLayout() {
 
     const animatedStyle = useAnimatedStyle(() => {
       const translateX = isFocused
-        ? withTiming(0, { duration: 300 })
-        : withTiming(index === 0 ? -SCREEN_WIDTH : SCREEN_WIDTH, { duration: 300 });
+        ? withTiming(0, { duration: 300, easing: Easing.cubic })
+        : withTiming(index === 0 ? -SCREEN_WIDTH : SCREEN_WIDTH, {
+            duration: 300,
+            easing: Easing.cubic,
+          });
 
       return {
         transform: [{ translateX }],
