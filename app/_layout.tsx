@@ -16,7 +16,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import NavigationBar, { setBackgroundColorAsync } from 'expo-navigation-bar';
+import NavigationBar, { setBackgroundColorAsync, setStyle } from 'expo-navigation-bar';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
@@ -27,16 +28,30 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === 'android') {
       // Set the navigation bar style
-      setBackgroundColorAsync('black');
+      // setBackgroundColorAsync('black');
+      // setStyle('dark');
     }
   }, []);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack>
-        <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ title: 'Modal', presentation: 'modal' }} />
-      </Stack>
-      <StatusBar style="light" />
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        <SafeAreaView
+          style={{
+            flex: 1,
+            backgroundColor: 'black',
+            // Make sure view props work.
+            borderRadius: 16,
+          }}
+          mode={'padding'}
+          // edges={}
+        >
+          <Stack>
+            <Stack.Screen name="(drawer)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ title: 'Modal', presentation: 'modal' }} />
+          </Stack>
+        </SafeAreaView>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
