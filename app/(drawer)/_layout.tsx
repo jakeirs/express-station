@@ -14,6 +14,15 @@ const DrawerLayout = () => (
       }}
     />
     <Drawer.Screen
+      name="(tabs-expo-ui)"
+      
+      options={{
+        headerShown: false,
+        headerTitle: '(tabs-expo-ui)',
+        drawerIcon: ({ size, color }) => <Ionicons name="airplane" size={size} color={color} />,
+      }}
+    />
+    <Drawer.Screen
       name="(tabs)"
       options={{
         headerTitle: 'Tabs',
