@@ -43,7 +43,7 @@ export default function RootLayout() {
             // Make sure view props work.
             borderRadius: 16,
           }}
-          mode={'padding'}
+          // mode={'padding'}
           // edges={}
         >
           <Stack>
